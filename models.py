@@ -50,6 +50,7 @@ class Product(db.Model):
     Description = db.Column(db.String(255))
     ImageURL = db.Column(db.String(255))
     Listed = db.Column(db.Boolean, default=True)
+    Discount_Percentage = db.Column(db.Integer, default=0)
     
     # Foreign keys to Category and SubCategory
     Category_ID = db.Column(db.Integer, db.ForeignKey('category.Category_ID'), nullable=False)
@@ -126,19 +127,6 @@ class Return(db.Model):
     # Back-populates relationship
     order = db.relationship('Order', back_populates='returns')
 
-# Product Management Tables
-class PromotionCoupon(db.Model):
-    __tablename__ = 'promotion_coupon'
-    Promotion_ID = db.Column(db.Integer, primary_key=True)
-    Discount_Percentage = db.Column(db.Float, nullable=False)
-    Code = db.Column(db.String(50), unique=True)
-
-    # Foreign keys to Inventory (composite key not applicable here, assuming single FK)
-    Product_ID = db.Column(db.Integer, db.ForeignKey('inventory.Product_ID'))
-    Warehouse_ID = db.Column(db.Integer, db.ForeignKey('inventory.Warehouse_ID'))
-    
-    # Optional back-populates relationships
-    inventory = db.relationship('Inventory', foreign_keys=[Product_ID, Warehouse_ID])
 
 # Initialize the database
 with app.app_context():
