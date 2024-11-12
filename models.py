@@ -132,9 +132,6 @@ class PromotionCoupon(db.Model):
     Promotion_ID = db.Column(db.Integer, primary_key=True)
     Discount_Percentage = db.Column(db.Float, nullable=False)
     Code = db.Column(db.String(50), unique=True)
-    User_Tier = db.Column(db.String(50), nullable=False)
-    Start_Date = db.Column(db.Date, nullable=False)
-    End_Date = db.Column(db.Date, nullable=False)
 
     # Foreign keys to Inventory (composite key not applicable here, assuming single FK)
     Product_ID = db.Column(db.Integer, db.ForeignKey('inventory.Product_ID'))
