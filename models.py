@@ -1,14 +1,9 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 from db_config import DB_CONFIG
 
-app = Flask(__name__)
-
-# @ Hadi and Sergio, replate the DB_CONFIG in this format:
-# DB_CONFIG = 'mysql://root:PASSWORD@localhost:3306/DATABASE_NAME'
-
-app.config['SQLALCHEMY_DATABASE_URI'] = DB_CONFIG
-db = SQLAlchemy(app)
+db = SQLAlchemy()
 
 # Inventory Management Tables
 class Warehouse(db.Model):
@@ -64,28 +59,42 @@ class Product(db.Model):
 
 class Inventory(db.Model):
     __tablename__ = 'inventory'
-    Stock_Level = db.Column(db.Integer, nullable=False)
     
-    # Composite primary key with Product_ID and Warehouse_ID
+    # Composite primary key columns (also foreign keys)
     Product_ID = db.Column(db.Integer, db.ForeignKey('product.Product_ID'), primary_key=True)
     Warehouse_ID = db.Column(db.Integer, db.ForeignKey('warehouse.Warehouse_ID'), primary_key=True)
     
-    # Back-populates relationships
+    # Regular columns
+    Stock_Level = db.Column(db.Integer, nullable=False)
+    
+    # Relationships
     product = db.relationship('Product', back_populates='inventories')
     warehouse = db.relationship('Warehouse', back_populates='inventories')
     alerts = db.relationship('InventoryAlert', back_populates='inventory')
 
 class InventoryAlert(db.Model):
     __tablename__ = 'inventory_alert'
-    Alert_ID = db.Column(db.Integer, primary_key=True)
+    
+    # Primary key
+    Alert_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    
+    # Foreign keys (reference composite key of Inventory)
+    Product_ID = db.Column(db.Integer, nullable=False)
+    Warehouse_ID = db.Column(db.Integer, nullable=False)
+    
+    # Regular columns
     Alert_Date = db.Column(db.Date, nullable=False)
     Description_of_Alert = db.Column(db.String(255))
     
-    # Foreign key to Inventory (composite key not applicable here, assuming single FK)
-    Product_ID = db.Column(db.Integer, db.ForeignKey('inventory.Product_ID'))
-    Warehouse_ID = db.Column(db.Integer, db.ForeignKey('inventory.Warehouse_ID'))
+    # Composite foreign key constraint
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['Product_ID', 'Warehouse_ID'],
+            ['inventory.Product_ID', 'inventory.Warehouse_ID']
+        ),
+    )
     
-    # Back-populates relationship
+    # Relationship
     inventory = db.relationship('Inventory', back_populates='alerts')
 
 # Order Management Tables
@@ -126,10 +135,3 @@ class Return(db.Model):
     
     # Back-populates relationship
     order = db.relationship('Order', back_populates='returns')
-
-
-# Initialize the database
-with app.app_context():
-    db.create_all()
-
-print("Database tables created.")
