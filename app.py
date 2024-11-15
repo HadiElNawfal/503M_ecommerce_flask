@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import jwt
 from waitress import serve
 import requests
+import APIs.product
 import APIs.warehouse
 from db_config import DB_CONFIG
 from flask_wtf.csrf import CSRFProtect, generate_csrf
@@ -219,8 +220,6 @@ def get_dashboard():
 
 
 
-
-
 #API Calls:
 # import APIS:
 #Should remove all the csrf exempts
@@ -249,7 +248,51 @@ def update_warehouse(warehouse_id):
 def delete_warehouse(warehouse_id):
     return APIs.warehouse.delete_warehouse(warehouse_id)
 
+#Create a Category:
+@csrf.exempt
+@app.route('/api/categories', methods=['POST'])
+def create_category():
+    return APIs.product.create_category()
+
+#Create a SubCategory:
+@csrf.exempt
+@app.route('/api/subcategories', methods=['POST'])
+def create_subcategory():
+    return APIs.product.create_subcategory()
+
+
+# Products:
+# Get All prducts:
+@csrf.exempt
+@app.route('/api/view_products', methods=['GET'])
+def get_products():
+    return APIs.product.get_products()
+
+# Get a single product: 
+@csrf.exempt
+@app.route('/api/view_product/<int:product_id>', methods=['GET'])
+def get_product(product_id):
+    return APIs.product.get_product(product_id)
+
+# Add Product API:
+@csrf.exempt
+@app.route('/api/add_product', methods=['POST'])
+def add_product():
+    return APIs.product.add_product()
+
+# Update Product API:
+@csrf.exempt
+@app.route('/api/update_product/<int:product_id>', methods=['PUT'])
+def update_product(product_id):
+    return APIs.product.update_product(product_id)
+
+#Delete API:
+@csrf.exempt
+@app.route('/api/delete_product/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
+    return APIs.product.delete_product(product_id)
 
 #The app didnot work until I removed this to the end, and so the API calls are done before the ssl @SERGIOOOOO 
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
+

@@ -20,8 +20,7 @@ class Category(db.Model):
     Category_ID = db.Column(db.Integer, primary_key=True)
     Category_Name = db.Column(db.String(100), nullable=False)
 
-    # Relationship to SubCategory and Product
-    subcategories = db.relationship('SubCategory', back_populates='category')
+    # Relationship to Product
     products = db.relationship('Product', back_populates='category')
     
 class SubCategory(db.Model):
@@ -30,11 +29,7 @@ class SubCategory(db.Model):
     SubCategory_Name = db.Column(db.String(100), nullable=False)
     Description = db.Column(db.String(255))
     
-    # Foreign key to Category
-    Category_ID = db.Column(db.Integer, db.ForeignKey('category.Category_ID'), nullable=False)
-    
     # Back-populates relationship
-    category = db.relationship('Category', back_populates='subcategories')
     products = db.relationship('Product', back_populates='subcategory')
 
 class Product(db.Model):
@@ -135,3 +130,4 @@ class Return(db.Model):
     
     # Back-populates relationship
     order = db.relationship('Order', back_populates='returns')
+
