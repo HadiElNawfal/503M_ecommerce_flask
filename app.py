@@ -292,6 +292,11 @@ def update_product(product_id):
 def delete_product(product_id):
     return APIs.product.delete_product(product_id)
 
+#Bulk upload / CSV File:
+@app.route('/api/upload_products', methods=['POST'])
+def upload_products():
+    return APIs.product.upload_products()
+
 #The app didnot work until I removed this to the end, and so the API calls are done before the ssl @SERGIOOOOO 
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)

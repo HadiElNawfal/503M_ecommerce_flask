@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, make_response
+import csv
 
 # API to create a category
 def create_category():
@@ -92,7 +93,7 @@ def get_product(product_id):
 
 # Add Product API:
 def add_product():
-    from app import Product, db
+    from app import Product, db, Category, SubCategory
     """Add a new product."""
     data = request.get_json()
 
@@ -112,6 +113,20 @@ def add_product():
     if discount_percentage < 0 or discount_percentage > 100:
         return jsonify({'error': 'Discount_Percentage must be between 0 and 100'}), 400
 
+    # Check for existing category and subcategory
+    category = Category.query.get(category_id)
+    subcategory = SubCategory.query.get(subcategory_id)
+
+    if not category:
+        return jsonify({
+            'error': f'Category unavailable'
+        }), 400
+
+    if not subcategory:
+        return jsonify({
+            'error': f'SubCategory unavailable'
+        }), 400
+                
     # Create a new product
     new_product = Product(
         Name=name,
@@ -132,7 +147,7 @@ def add_product():
 
 # Update Product API:
 def update_product(product_id):
-    from app import Product, db
+    from app import Product, db, Category, SubCategory
     """Update an existing product."""
     product = Product.query.get(product_id)
     if not product:
@@ -154,6 +169,20 @@ def update_product(product_id):
     if product.Discount_Percentage < 0 or product.Discount_Percentage > 100:
         return jsonify({'error': 'Discount_Percentage must be between 0 and 100'}), 400
 
+    # Check for existing category and subcategory
+    category = Category.query.get(data.get('Category_ID', product.Category_ID))
+    subcategory = SubCategory.query.get(data.get('SubCategory_ID', product.SubCategory_ID))
+
+    if not category:
+        return jsonify({
+            'error': f'Category unavailable'
+        }), 400
+
+    if not subcategory:
+        return jsonify({
+            'error': f'SubCategory unavailable'
+        }), 400
+        
     db.session.commit()
     return jsonify({'message': 'Product updated successfully'}), 200
 
@@ -169,3 +198,94 @@ def delete_product(product_id):
     db.session.commit()
     return jsonify({'message': 'Product deleted successfully'}), 200
 
+# for CSV files/Bulk upload:
+def upload_products():
+    from app import Product, db, Category, SubCategory
+    """Upload a CSV file containing products and add them to the database."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    if not file.filename.endswith('.csv'):
+        return jsonify({'error': 'Invalid file type. Only CSV files are allowed'}), 400
+
+    try:
+        # Decode and parse the CSV file
+        file_stream = file.stream.read().decode('utf-8')
+        csv_reader = csv.DictReader(file_stream.splitlines())
+
+        products_added = []
+        for row in csv_reader:
+            # Validate required fields
+            name = row.get('Name')
+            price = row.get('Price')
+            category_id = row.get('Category_ID')
+            subcategory_id = row.get('SubCategory_ID')
+
+            if not name or not price or not category_id or not subcategory_id:
+                return jsonify({
+                    'error': f'Missing required fields in row: {row}'
+                }), 400
+
+            # Convert price and IDs to appropriate types
+            try:
+                price = float(price)
+                category_id = int(category_id)
+                subcategory_id = int(subcategory_id)
+            except ValueError:
+                return jsonify({
+                    'error': f'Invalid data types in row: {row}'
+                }), 400
+
+            # Optional fields with defaults
+            description = row.get('Description', '')
+            image_url = row.get('ImageURL', '')
+            listed = row.get('Listed', 'true').lower() == 'true'
+            discount_percentage = int(row.get('Discount_Percentage', 0))
+
+            if discount_percentage < 0 or discount_percentage > 100:
+                return jsonify({
+                    'error': f'Invalid Discount_Percentage in row: {row}'
+                }), 400
+
+            # Check for existing category and subcategory
+            category = Category.query.get(category_id)
+            subcategory = SubCategory.query.get(subcategory_id)
+
+            if not category:
+                return jsonify({
+                    'error': f'Category_ID {category_id} not found in row: {row}'
+                }), 400
+
+            if not subcategory:
+                return jsonify({
+                    'error': f'SubCategory_ID {subcategory_id} not found in row: {row}'
+                }), 400
+
+            # Create a new product
+            product = Product(
+                Name=name,
+                Price=price,
+                Description=description,
+                ImageURL=image_url,
+                Listed=listed,
+                Discount_Percentage=discount_percentage,
+                Category_ID=category_id,
+                SubCategory_ID=subcategory_id
+            )
+            db.session.add(product)
+            products_added.append(product)
+
+        # Commit the changes
+        db.session.commit()
+        return jsonify({
+            'message': f'{len(products_added)} products added successfully'
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
