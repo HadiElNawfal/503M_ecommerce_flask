@@ -29,9 +29,50 @@ csrf = CSRFProtect(app) # Enable CSRF protection for Flask app
 
 db.init_app(app)
 
-# Initialize the database
+def create_sample_data():
+    # Check if sample data already exists
+    if Category.query.first():
+        return
+
+    # Create sample categories
+    electronics = Category(Category_Name='Electronics')
+    books = Category(Category_Name='Books')
+
+    # Create sample subcategories
+    mobiles = SubCategory(SubCategory_Name='Mobile Phones', Description='Smartphones and accessories')
+    fiction = SubCategory(SubCategory_Name='Fiction', Description='Fictional books')
+
+    # Add categories and subcategories to session
+    db.session.add_all([electronics, books, mobiles, fiction])
+    db.session.commit()
+
+    # Create sample products
+    iphone = Product(
+        Name='iPhone 14',
+        Price=999.99,
+        Description='Latest Apple smartphone',
+        ImageURL='https://example.com/iphone14.jpg',
+        Category_ID=electronics.Category_ID,
+        SubCategory_ID=mobiles.SubCategory_ID
+    )
+    gatsby = Product(
+        Name='The Great Gatsby',
+        Price=10.99,
+        Description='Classic novel by F. Scott Fitzgerald',
+        ImageURL='https://example.com/gatsby.jpg',
+        Category_ID=books.Category_ID,
+        SubCategory_ID=fiction.SubCategory_ID
+    )
+
+    # Add products to session
+    db.session.add_all([iphone, gatsby])
+    db.session.commit()
+
+# Initialize the database and create sample data
 with app.app_context():
     db.create_all()
+    create_sample_data()
+
 
 def role_required(required_roles):
     def decorator(f):
