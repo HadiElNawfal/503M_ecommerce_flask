@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import jwt
 from waitress import serve
 import requests
+import APIs.warehouse
 from db_config import DB_CONFIG
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from datetime import datetime, timedelta
@@ -209,5 +210,46 @@ def get_dashboard():
     return jsonify(data)
 
 
+
+
+
+
+
+
+
+
+
+
+
+#API Calls:
+# import APIS:
+#Should remove all the csrf exempts
+import APIs
+@app.route('/api/warehouses', methods=['GET'])
+def get_warehouses():
+    print("here")
+    return APIs.warehouse.get_warehouses()
+
+@app.route('/api/warehouses/<int:warehouse_id>', methods=['GET'])
+def get_warehouse(warehouse_id):
+    return APIs.warehouse.get_warehouse(warehouse_id)
+
+@csrf.exempt
+@app.route('/api/create_warehouse', methods=['POST'])
+def create_warehouse():
+    return APIs.warehouse.create_warehouse()
+
+@csrf.exempt
+@app.route('/api/update_warehouse/<int:warehouse_id>', methods=['PUT'])
+def update_warehouse(warehouse_id):
+    return APIs.warehouse.update_warehouse(warehouse_id)
+
+@csrf.exempt
+@app.route('/api/delete_warehouse/<int:warehouse_id>', methods=['DELETE'])
+def delete_warehouse(warehouse_id):
+    return APIs.warehouse.delete_warehouse(warehouse_id)
+
+
+#The app didnot work until I removed this to the end, and so the API calls are done before the ssl @SERGIOOOOO 
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
