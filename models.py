@@ -9,7 +9,7 @@ db = SQLAlchemy()
 class Warehouse(db.Model):
     __tablename__ = 'warehouse'
     Warehouse_ID = db.Column(db.Integer, primary_key=True)
-    Manager_Name = db.Column(db.String(100), nullable=False)
+    Manager_ID = db.Column(db.Integer, nullable=False)
     Location = db.Column(db.String(200), nullable=False)
     
     # Relationship to Inventory

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import jwt
 from waitress import serve
 import requests
+import APIs.inventory
 import APIs.product
 import APIs.warehouse
 from db_config import DB_CONFIG
@@ -267,7 +268,6 @@ def get_dashboard():
 import APIs
 @app.route('/api/warehouses', methods=['GET'])
 def get_warehouses():
-    print("here")
     return APIs.warehouse.get_warehouses()
 
 @app.route('/api/warehouses/<int:warehouse_id>', methods=['GET'])
@@ -334,9 +334,46 @@ def delete_product(product_id):
     return APIs.product.delete_product(product_id)
 
 #Bulk upload / CSV File:
+@csrf.exempt
 @app.route('/api/upload_products', methods=['POST'])
 def upload_products():
     return APIs.product.upload_products()
+
+
+
+
+
+
+#get the wraehouse id using the user id
+@app.route('/api/get-warehouse-by-user/<int:user_id>', methods=['GET'])
+def get_warehouse_by_user_id(user_id):
+    """
+    Retrieve the Warehouse_ID based on the given user ID (Manager_ID).
+    :param user_id: The ID of the user managing the warehouse.
+    """
+    try:
+        # Query the warehouse using the user_id as Manager_ID
+        warehouse = Warehouse.query.filter_by(Manager_ID=user_id).first()
+
+        if not warehouse:
+            return jsonify({'error': f'No warehouse found for user_id {user_id}'}), 404
+
+        # Return the warehouse details
+        return jsonify({
+            'Warehouse_ID': warehouse.Warehouse_ID,
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+@csrf.exempt
+@app.route('/api/edit_warehouse_by_id', methods=['PUT'])
+def edit_warehouse_by_id():
+    authenticated, user_data = is_authenticated()
+    user_id = user_data.get('user_id')
+    # get the corresponding warehouse id for this user id, from the warehouse table:
+    warehouse_id = get_warehouse_by_user_id(user_id).get('Warehouse_ID')
+    return APIs.inventory.edit_inventory(warehouse_id)
 
 #The app didnot work until I removed this to the end, and so the API calls are done before the ssl @SERGIOOOOO 
 if __name__ == "__main__":
