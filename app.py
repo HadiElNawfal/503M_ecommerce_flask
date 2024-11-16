@@ -71,6 +71,7 @@ def create_sample_data():
 with app.app_context():
     db.create_all()
     create_sample_data()
+    APIs.inventory.initialize_inventory()
 
 def verify_csrf(f):
     @wraps(f)
@@ -401,6 +402,16 @@ def edit_warehouse_by_id():
     warehouse_id = get_warehouse_by_user_id(user_id).get('Warehouse_ID')
     return APIs.inventory.edit_inventory(warehouse_id)
 
+@app.route('/api/view_inventory', methods = ['GET'])
+@permission_required(['view_inventory'])
+@verify_csrf
+def view_inventory_by_id():
+    authenticated, user_data = is_authenticated()
+    user_id = user_data.get('user_id')
+    # get the corresponding warehouse id for this user id, from the warehouse table:
+    warehouse_id = get_warehouse_by_user_id(user_id).get('Warehouse_ID')
+    return APIs.inventory.view_inventory(warehouse_id)
+    
 
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
