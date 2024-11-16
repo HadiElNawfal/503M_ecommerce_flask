@@ -67,30 +67,7 @@ class Inventory(db.Model):
     warehouse = db.relationship('Warehouse', back_populates='inventories')
     alerts = db.relationship('InventoryAlert', back_populates='inventory')
 
-class InventoryAlert(db.Model):
-    __tablename__ = 'inventory_alert'
-    
-    # Primary key
-    Alert_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    
-    # Foreign keys (reference composite key of Inventory)
-    Product_ID = db.Column(db.Integer, nullable=False)
-    Warehouse_ID = db.Column(db.Integer, nullable=False)
-    
-    # Regular columns
-    Alert_Date = db.Column(db.Date, nullable=False)
-    Description_of_Alert = db.Column(db.String(255))
-    
-    # Composite foreign key constraint
-    __table_args__ = (
-        db.ForeignKeyConstraint(
-            ['Product_ID', 'Warehouse_ID'],
-            ['inventory.Product_ID', 'inventory.Warehouse_ID']
-        ),
-    )
-    
-    # Relationship
-    inventory = db.relationship('Inventory', back_populates='alerts')
+
 
 # Order Management Tables
 class Order(db.Model):
