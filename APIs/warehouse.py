@@ -16,7 +16,7 @@ def get_warehouses():
     warehouse_list = [
         {
             "Warehouse_ID": w.Warehouse_ID,
-            "Manager_Name": w.Manager_Name,
+            "Manager_ID": w.Manager_ID,
             "Location": w.Location,
         }
         for w in warehouses
@@ -34,7 +34,7 @@ def get_warehouse(warehouse_id):
         return jsonify({'error': 'Warehouse not found'}), 404
     return jsonify({
         'Warehouse_ID': warehouse.Warehouse_ID,
-        'Manager_Name': warehouse.Manager_Name,
+        'Manager_ID': warehouse.Manager_ID,
         'Location': warehouse.Location
     }), 200
 
@@ -58,7 +58,7 @@ def update_warehouse(warehouse_id):
         return jsonify({'error': 'Warehouse not found'}), 404
 
     data = request.get_json()
-    warehouse.Manager_Name = data.get('Manager_Name', warehouse.Manager_Name)
+    warehouse.Manager_ID = data.get('Manager_ID', warehouse.Manager_ID)
     warehouse.Location = data.get('Location', warehouse.Location)
     db.session.commit()
     return jsonify({'message': 'Warehouse updated successfully'}), 200
