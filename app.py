@@ -369,52 +369,94 @@ def upload_products():
 
 
 
-#get the wraehouse id using the user id
-@app.route('/api/get-warehouse-by-user/<int:user_id>', methods=['GET'])
-@permission_required(['view_warehouse'])
-def get_warehouse_by_user_id(user_id):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def fetch_warehouse_by_user_id(user_id):
     """
     Retrieve the Warehouse_ID based on the given user ID (Manager_ID).
     :param user_id: The ID of the user managing the warehouse.
+    :return: Tuple containing (data_dict, error_message)
     """
     try:
         # Query the warehouse using the user_id as Manager_ID
         warehouse = Warehouse.query.filter_by(Manager_ID=user_id).first()
 
         if not warehouse:
-            return jsonify({'error': f'No warehouse found for user_id {user_id}'}), 404
+            return None, f'No warehouse found for user_id {user_id}'
 
         # Return the warehouse details
-        return jsonify({
-            'Warehouse_ID': warehouse.Warehouse_ID,
-        }), 200
+        return {'Warehouse_ID': warehouse.Warehouse_ID}, None
 
     except Exception as e:
-        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+        return None, f'An error occurred: {str(e)}'
+
+
+@app.route('/api/get-warehouse-by-user/<int:user_id>', methods=['GET'])
+@permission_required(['view_warehouse'])
+def get_warehouse_by_user_id_route(user_id):
+    data, error = fetch_warehouse_by_user_id(user_id)
+    
+    if error:
+        status_code = 404 if 'No warehouse found' in error else 500
+        return jsonify({'error': error}), status_code
+    
+    return jsonify(data), 200
 
 @app.route('/api/edit_inventory_by_id', methods=['PUT'])
 @permission_required(['update_inventory'])
 @verify_csrf
-def edit_warehouse_by_id():
+def edit_inventory_by_id():
     authenticated, user_data = is_authenticated()
+    if not authenticated:
+        return jsonify({'error': 'Unauthorized'}), 401
+
     user_id = user_data.get('user_id')
-    # get the corresponding warehouse id for this user id, from the warehouse table:
-    response = get_warehouse_by_user_id(user_id)
-    warehouse_id = response.get_json().get('Warehouse_ID')
+    
+    # Fetch warehouse data using the helper function
+    data, error = fetch_warehouse_by_user_id(user_id)
+
+    if error:
+        status_code = 404 if 'No warehouse found' in error else 500
+        return jsonify({'error': error}), status_code
+
+    warehouse_id = data['Warehouse_ID']
     return APIs.inventory.edit_inventory(warehouse_id)
 
-@app.route('/api/view_inventory', methods = ['GET'])
+@app.route('/api/view_inventory', methods=['GET'])
 @permission_required(['view_inventory'])
 @verify_csrf
 def view_inventory_by_id():
     authenticated, user_data = is_authenticated()
+    if not authenticated:
+        return jsonify({'error': 'Unauthorized'}), 401
+
     user_id = user_data.get('user_id')
-    # get the corresponding warehouse id for this user id, from the warehouse table:
-    response = get_warehouse_by_user_id(user_id)
-    warehouse_id = response.get_json().get('Warehouse_ID')
-    return APIs.inventory.view_inventory(warehouse_id)
     
+    # Fetch warehouse data using the helper function
+    data, error = fetch_warehouse_by_user_id(user_id)
+
+    if error:
+        status_code = 404 if 'No warehouse found' in error else 500
+        return jsonify({'error': error}), status_code
+
+    warehouse_id = data['Warehouse_ID']
+    return APIs.inventory.view_inventory(warehouse_id)
+
 
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
-
