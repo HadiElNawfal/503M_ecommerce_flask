@@ -23,11 +23,18 @@ db.init_app(app)
 def create_roles_and_permissions():
     # Permissions
     permission_names = [
+        # Inventory permissions
         'add_inventory', 'remove_inventory', 'update_inventory', 'view_inventory',
+        'add_warehouse', 'remove_warehouse', 'update_warehouse', 'view_warehouse',
+        # Product permissions
         'add_product', 'remove_product', 'update_product', 'view_product',
+        'add_category', 'remove_category', 'update_category', 'view_category',
+        'add_subcategory', 'remove_subcategory', 'update_subcategory', 'view_subcategory',
+        # Order permissions
         'add_order', 'remove_order', 'update_order', 'view_order',
+        'add_return', 'remove_return', 'update_return', 'view_return',
     ]
-    
+
     permissions = {}
     for name in permission_names:
         # Check if the permission already exists
@@ -53,27 +60,47 @@ def create_roles_and_permissions():
     # Assign permissions to roles
     roles['Admin'].permissions = list(permissions.values())
 
+    # Product Manager permissions
     roles['Product Manager'].permissions = [
         permissions['add_product'],
         permissions['remove_product'],
         permissions['update_product'],
         permissions['view_product'],
+        permissions['add_category'],
+        permissions['remove_category'],
+        permissions['update_category'],
+        permissions['view_category'],
+        permissions['add_subcategory'],
+        permissions['remove_subcategory'],
+        permissions['update_subcategory'],
+        permissions['view_subcategory'],
     ]
 
+    # Inventory Manager permissions
     roles['Inventory Manager'].permissions = [
         permissions['add_inventory'],
         permissions['remove_inventory'],
         permissions['update_inventory'],
         permissions['view_inventory'],
+        permissions['add_warehouse'],
+        permissions['remove_warehouse'],
+        permissions['update_warehouse'],
+        permissions['view_warehouse'],
     ]
 
+    # Order Manager permissions
     roles['Order Manager'].permissions = [
         permissions['add_order'],
         permissions['remove_order'],
         permissions['update_order'],
         permissions['view_order'],
+        permissions['add_return'],
+        permissions['remove_return'],
+        permissions['update_return'],
+        permissions['view_return'],
     ]
 
+    # Customer permissions
     roles['Customer'].permissions = [
         permissions['view_product'],
         permissions['view_order'],
@@ -118,17 +145,6 @@ with app.app_context():
     create_roles_and_permissions()  # Ensure roles and permissions are created
     create_users()   # Now create users for each role
 
-@app.after_request
-def set_csrf_cookie(response):
-    response.set_cookie('csrf_token', generate_csrf(), secure=True, httponly=True, samesite='Strict')
-    return response
-
-@app.route('/api/get-csrf-token', methods=['GET'])
-def get_csrf_token():
-    csrf_token = generate_csrf()
-    response = jsonify({'csrf_token': csrf_token})
-    response.set_cookie('csrf_token', csrf_token, secure=True, httponly=True, samesite='Strict')
-    return response
 
 @app.route('/api/login', methods=['POST'])
 @csrf.exempt

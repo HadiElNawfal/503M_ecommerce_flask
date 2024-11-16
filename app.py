@@ -9,24 +9,22 @@ import APIs.inventory
 import APIs.product
 import APIs.warehouse
 from db_config import DB_CONFIG
-from flask_wtf.csrf import CSRFProtect, generate_csrf
 from datetime import datetime, timedelta
 from flask_cors import CORS
 from models import db, Warehouse, Category, SubCategory, Product, Inventory, Order, OrderItem, Return
 import os
 import random
+import secrets  
 import string
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')  # Replace with a secure key
-app.config['SESSION_TYPE'] = 'filesystem'     # Use 'redis' for production
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_CONFIG
 JWT_ALGORITHM = 'HS256'
 RBAC_SERVICE_URL = 'https://localhost:5001'
 CA_CERT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs", "ca.crt")
-csrf = CSRFProtect(app) # Enable CSRF protection for Flask app
 
 db.init_app(app)
 
@@ -73,6 +71,25 @@ def create_sample_data():
 with app.app_context():
     db.create_all()
     create_sample_data()
+
+def verify_csrf(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        csrf_token_session = session.get('_csrf_token', None)
+        csrf_token_header = request.headers.get('X-CSRFToken', None)
+        
+        if not csrf_token_header or not csrf_token_session:
+            return jsonify({
+                'error': 'Missing CSRF token.',
+                'csrf_token_header': csrf_token_header,
+                'csrf_token_session': csrf_token_session
+            }), 400
+
+        if csrf_token_header != csrf_token_session:
+            return jsonify({'error': 'Invalid CSRF token.'}), 400
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 def role_required(required_roles):
@@ -121,8 +138,13 @@ CORS(app, origins=["https://localhost:3000"], supports_credentials=True)
 def is_authenticated():
     token = request.cookies.get('token')
     if not token:
-        print("No token found in cookies.")
-        return False, None
+        # Check the Authorization header
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1]
+        else:
+            print("No token found in cookies or Authorization header.")
+            return False, None
 
     try:
         response = requests.post(
@@ -130,9 +152,6 @@ def is_authenticated():
             json={'token': token},
             verify=CA_CERT_PATH
         )
-        # print(f"Verify Token Response Status Code: {response.status_code}")
-        # print(f"Verify Token Response Content: {response.text}")
-
         if response.status_code == 200:
             data = response.json()
             print(f"Authentication successful for user_id: {data.get('user_id')}")
@@ -152,25 +171,15 @@ print(f"Admin URL: {admin_url}")  # For server logs only
 
 @app.route('/api/get-csrf-token', methods=['GET'])
 def get_csrf_token():
-    try:
-        response = requests.get(
-            f'{RBAC_SERVICE_URL}/api/get-csrf-token',
-            cookies=request.cookies,
-            verify=CA_CERT_PATH
-        )
-
-        resp = make_response(response.content, response.status_code)
-
-        if 'Set-Cookie' in response.headers:
-            resp.headers['Set-Cookie'] = response.headers['Set-Cookie']
-
-        return resp
-    except requests.exceptions.RequestException as e:
-        print(f"Error contacting RBAC service: {e}")
-        return jsonify({'error': 'CSRF token service unavailable'}), 503
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_urlsafe(32)
+    csrf_token = session['_csrf_token']
+    response = jsonify({'csrf_token': csrf_token})
+    # Set the CSRF token in a secure cookie
+    response.set_cookie('csrf_token', csrf_token, httponly=False, secure=True, samesite='Lax')
+    return response
 
 @app.route('/api/login', methods=['POST'])
-@csrf.exempt
 def login():
     try:
         # Forward the login request to the RBAC service
@@ -229,11 +238,13 @@ def check_auth():
     else:
         return jsonify({'authenticated': False}), 401
 
-@csrf.exempt
 @app.route('/api/logout', methods=['POST'])
 def logout():
+    session.clear()
     response = make_response(jsonify({'message': 'Logged out successfully'}), 200)
     response.set_cookie('token', '', expires=0, httponly=True, secure=True, samesite='Strict')
+    response.set_cookie('csrf_token', '', expires=0, httponly=False, secure=True, samesite='Strict')
+    response.set_cookie('session', '', expires=0, httponly=True, secure=True, samesite='Strict')
     return response
 
 # Test Route
@@ -267,75 +278,88 @@ def get_dashboard():
 #Should remove all the csrf exempts
 import APIs
 @app.route('/api/warehouses', methods=['GET'])
+@permission_required(['view_warehouse'])
 def get_warehouses():
     return APIs.warehouse.get_warehouses()
 
 @app.route('/api/warehouses/<int:warehouse_id>', methods=['GET'])
+@permission_required(['view_warehouse'])
 def get_warehouse(warehouse_id):
     return APIs.warehouse.get_warehouse(warehouse_id)
 
-@csrf.exempt
+
 @app.route('/api/create_warehouse', methods=['POST'])
+@permission_required(['add_warehouse'])
+@verify_csrf
 def create_warehouse():
     return APIs.warehouse.create_warehouse()
 
-@csrf.exempt
 @app.route('/api/update_warehouse/<int:warehouse_id>', methods=['PUT'])
+@permission_required(['update_warehouse'])
+@verify_csrf
 def update_warehouse(warehouse_id):
     return APIs.warehouse.update_warehouse(warehouse_id)
 
-@csrf.exempt
 @app.route('/api/delete_warehouse/<int:warehouse_id>', methods=['DELETE'])
+@permission_required(['remove_warehouse'])
+
+@verify_csrf
 def delete_warehouse(warehouse_id):
     return APIs.warehouse.delete_warehouse(warehouse_id)
 
 #Create a Category:
-@csrf.exempt
 @app.route('/api/categories', methods=['POST'])
+@permission_required(['add_category'])
+@verify_csrf
 def create_category():
     return APIs.product.create_category()
 
 #Create a SubCategory:
-@csrf.exempt
 @app.route('/api/subcategories', methods=['POST'])
+@permission_required(['add_subcategory'])
+@verify_csrf
 def create_subcategory():
     return APIs.product.create_subcategory()
 
 
 # Products:
 # Get All prducts:
-@csrf.exempt
 @app.route('/api/view_products', methods=['GET'])
+@permission_required(['view_product'])
 def get_products():
     return APIs.product.get_products()
 
 # Get a single product: 
-@csrf.exempt
 @app.route('/api/view_product/<int:product_id>', methods=['GET'])
+@permission_required(['view_product'])
 def get_product(product_id):
     return APIs.product.get_product(product_id)
 
 # Add Product API:
-@csrf.exempt
 @app.route('/api/add_product', methods=['POST'])
+@permission_required(['add_product'])
+@verify_csrf
 def add_product():
     return APIs.product.add_product()
 
 # Update Product API:
-@csrf.exempt
 @app.route('/api/update_product/<int:product_id>', methods=['PUT'])
+@permission_required(['update_product'])
+@verify_csrf
 def update_product(product_id):
     return APIs.product.update_product(product_id)
 
 #Delete API:
-@csrf.exempt
 @app.route('/api/delete_product/<int:product_id>', methods=['DELETE'])
+@permission_required(['remove_product'])
+@verify_csrf
 def delete_product(product_id):
     return APIs.product.delete_product(product_id)
 
 #Bulk upload / CSV File:
-@csrf.exempt
 @app.route('/api/upload_products', methods=['POST'])
+@role_required(['Product Manager'])
+@verify_csrf
 def upload_products():
     return APIs.product.upload_products()
 
@@ -346,6 +370,7 @@ def upload_products():
 
 #get the wraehouse id using the user id
 @app.route('/api/get-warehouse-by-user/<int:user_id>', methods=['GET'])
+@permission_required(['view_warehouse'])
 def get_warehouse_by_user_id(user_id):
     """
     Retrieve the Warehouse_ID based on the given user ID (Manager_ID).
@@ -366,8 +391,9 @@ def get_warehouse_by_user_id(user_id):
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
-@csrf.exempt
 @app.route('/api/edit_warehouse_by_id', methods=['PUT'])
+@permission_required(['update_warehouse'])
+@verify_csrf
 def edit_warehouse_by_id():
     authenticated, user_data = is_authenticated()
     user_id = user_data.get('user_id')
@@ -375,7 +401,7 @@ def edit_warehouse_by_id():
     warehouse_id = get_warehouse_by_user_id(user_id).get('Warehouse_ID')
     return APIs.inventory.edit_inventory(warehouse_id)
 
-#The app didnot work until I removed this to the end, and so the API calls are done before the ssl @SERGIOOOOO 
+
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
 
