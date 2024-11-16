@@ -24,7 +24,7 @@ def edit_inventory(warehouse_id):
             return jsonify({'error': 'Inventory record not found'}), 404
 
         # Update the stock level
-        new_stock_level = inventory.Stock_Level + to_be_added
+        new_stock_level = inventory.Stock_Level + int(to_be_added)
         if new_stock_level < 0:
             return jsonify({'error': 'Stock level cannot be negative'}), 400
 
