@@ -399,7 +399,8 @@ def edit_warehouse_by_id():
     authenticated, user_data = is_authenticated()
     user_id = user_data.get('user_id')
     # get the corresponding warehouse id for this user id, from the warehouse table:
-    warehouse_id = get_warehouse_by_user_id(user_id).get('Warehouse_ID')
+    response = get_warehouse_by_user_id(user_id)
+    warehouse_id = response.get_json().get('Warehouse_ID')
     return APIs.inventory.edit_inventory(warehouse_id)
 
 @app.route('/api/view_inventory', methods = ['GET'])
@@ -409,7 +410,8 @@ def view_inventory_by_id():
     authenticated, user_data = is_authenticated()
     user_id = user_data.get('user_id')
     # get the corresponding warehouse id for this user id, from the warehouse table:
-    warehouse_id = get_warehouse_by_user_id(user_id).get('Warehouse_ID')
+    response = get_warehouse_by_user_id(user_id)
+    warehouse_id = response.get_json().get('Warehouse_ID')
     return APIs.inventory.view_inventory(warehouse_id)
     
 
