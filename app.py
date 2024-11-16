@@ -12,7 +12,7 @@ from db_config import DB_CONFIG
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from datetime import datetime, timedelta
 from flask_cors import CORS
-from models import db, Warehouse, Category, SubCategory, Product, Inventory, InventoryAlert, Order, OrderItem, Return
+from models import db, Warehouse, Category, SubCategory, Product, Inventory, Order, OrderItem, Return
 import os
 import random
 import string

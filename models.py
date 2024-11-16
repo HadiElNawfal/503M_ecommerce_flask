@@ -65,7 +65,6 @@ class Inventory(db.Model):
     # Relationships
     product = db.relationship('Product', back_populates='inventories')
     warehouse = db.relationship('Warehouse', back_populates='inventories')
-    alerts = db.relationship('InventoryAlert', back_populates='inventory')
 
 
 
