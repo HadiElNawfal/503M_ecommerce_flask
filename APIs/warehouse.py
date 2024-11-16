@@ -43,7 +43,7 @@ def create_warehouse():
     from app import Warehouse, db
     data = request.get_json()
     warehouse = Warehouse(
-        Manager_Name=data['Manager_Name'],
+        Manager_ID=data['Manager_ID'],
         Location=data['Location']
     )
     db.session.add(warehouse)
