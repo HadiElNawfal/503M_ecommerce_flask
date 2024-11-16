@@ -349,7 +349,7 @@ def add_product():
 def update_product(product_id):
     return APIs.product.update_product(product_id)
 
-#Delete API:
+#Delete Product API:
 @app.route('/api/delete_product/<int:product_id>', methods=['DELETE'])
 @permission_required(['remove_product'])
 @verify_csrf
@@ -391,8 +391,8 @@ def get_warehouse_by_user_id(user_id):
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
-@app.route('/api/edit_warehouse_by_id', methods=['PUT'])
-@permission_required(['update_warehouse'])
+@app.route('/api/edit_inventory_by_id', methods=['PUT'])
+@permission_required(['update_inventory'])
 @verify_csrf
 def edit_warehouse_by_id():
     authenticated, user_data = is_authenticated()
