@@ -132,7 +132,7 @@ def initialize_inventory():
 # inventory reports:
 # monthly turnover:
 def get_monthly_inventory_turnover(warehouse_id):
-    from app import db, User, Warehouse, Inventory, OrderItem, Order
+    from app import db, Warehouse, Inventory, OrderItem, Order
     """
     Get monthly inventory turnover for the inventory manager.
     :param user_id: The ID of the inventory manager (username or user_id).
