@@ -444,6 +444,9 @@ def get_dashboard():
     try:
         # Query total products
         total_products = db.session.query(Product).count()
+        
+        # Query pending orders
+        pending_orders = db.session.query(Order).filter_by(Status='Pending').count()
 
         # Query orders placed today
         today = datetime.utcnow().date()
@@ -452,8 +455,7 @@ def get_dashboard():
         # Query total customers, for now it will show 0
         total_customers = 0
 
-        # Query pending orders
-        pending_orders = db.session.query(Order).filter_by(Status='Pending').count()
+        
 
         # Prepare the dashboard data
         dashboard_data = {
