@@ -439,7 +439,7 @@ def get_data():
 @app.route('/api/dashboard', methods=['GET'])
 @role_required(['Admin'])  # Restrict access to Admin role
 def get_dashboard():
-    from app import db, Product, Order, Role
+    from app import db, Product, Order
 
     try:
         # Query total products
