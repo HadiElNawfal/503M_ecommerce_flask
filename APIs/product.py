@@ -198,6 +198,13 @@ def delete_product(product_id):
     db.session.commit()
     return jsonify({'message': 'Product deleted successfully'}), 200
 
+
+
+
+
+
+
+
 # for CSV files/Bulk upload:
 def upload_products():
     from app import Product, db, Category, SubCategory

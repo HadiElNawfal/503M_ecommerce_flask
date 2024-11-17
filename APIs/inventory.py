@@ -124,3 +124,7 @@ def initialize_inventory():
     except Exception as e:
         db.session.rollback()  # Rollback in case of any errors
         print(f"An error occurred during inventory initialization: {str(e)}")
+        
+
+
+# inventory reports:

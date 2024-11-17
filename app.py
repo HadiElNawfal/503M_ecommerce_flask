@@ -6,6 +6,7 @@ import jwt
 from waitress import serve
 import requests
 import APIs.inventory
+import APIs.orders
 import APIs.product
 import APIs.warehouse
 from db_config import DB_CONFIG
@@ -457,6 +458,40 @@ def view_inventory_by_id():
     warehouse_id = data['Warehouse_ID']
     return APIs.inventory.view_inventory(warehouse_id)
 
+
+
+
+
+# Orders Management:
+@app.route('/api/create_order', methods=['POST'])
+@permission_required(['add_order'])
+@verify_csrf
+def create_order():
+    return APIs.orders.create_order()
+
+@app.route('/api/update_order_status', methods=['PUT'])
+@permission_required(['update_order'])
+@verify_csrf
+def update_order():
+    return APIs.orders.update_order_status()
+
+@app.route('/api/view_all_orders', methods=['GET'])
+@permission_required(['view_order'])
+@verify_csrf
+def view_orders():
+    return APIs.orders.view_all_orders()
+
+@app.route('/api/create_order_item', methods=['POST'])
+@permission_required(['add_order'])
+@verify_csrf
+def create_order_item():
+    return APIs.orders.create_order_item()
+
+@app.route('/api/remove_order_item', methods=['DELETE'])
+@permission_required(['remove_order'])
+@verify_csrf
+def remove_order_item():
+    return APIs.orders.remove_order_item()
 
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
