@@ -1,4 +1,6 @@
 from flask import request, jsonify
+from datetime import datetime
+from sqlalchemy import extract, func
 
 def edit_inventory(warehouse_id):
     from app import Inventory, db, Product
@@ -128,3 +130,97 @@ def initialize_inventory():
 
 
 # inventory reports:
+# monthly turnover:
+def get_monthly_inventory_turnover(warehouse_id):
+    from app import db, User, Warehouse, Inventory, OrderItem, Order
+    """
+    Get monthly inventory turnover for the inventory manager.
+    :param user_id: The ID of the inventory manager (username or user_id).
+    :return: Monthly revenue for the manager's inventory in the format:
+             {"labels": ["January", "February", ...], "values": [1000, 1500, ...]}
+    """
+    try:
+        # Step 2: Get all Product_IDs managed by this inventory manager
+        inventory_items = Inventory.query.filter(Inventory.Warehouse_ID.in_(warehouse_id)).all()
+        product_ids = [item.Product_ID for item in inventory_items]
+
+        if not product_ids:
+            return jsonify({'error': 'No products found in the inventory for this manager'}), 404
+
+        # Step 3: Calculate revenue per month based on orders
+        # Join OrderItem, Order, and filter by Product_ID and Order_Date
+        turnover_data = db.session.query(
+            extract('month', Order.Order_Date).label('month'),  # Extract month from the order date
+            func.sum(OrderItem.Quantity * OrderItem.Price).label('revenue')  # Calculate revenue
+        ).join(OrderItem, Order.Order_ID == OrderItem.Order_ID) \
+         .filter(OrderItem.Product_ID.in_(product_ids)) \
+         .group_by('month') \
+         .order_by('month') \
+         .all()
+
+        # Step 4: Prepare the response in the desired format
+        month_labels = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
+        turnover_dict = {month: 0 for month in range(1, 13)}  # Initialize all months with 0 revenue
+
+        for row in turnover_data:
+            month = row.month  # Extract the month
+            revenue = row.revenue  # Extract the revenue for the month
+            turnover_dict[month] = revenue
+
+        # Format the response
+        response = {
+            "labels": [month_labels[month - 1] for month in turnover_dict.keys()],  # Month names
+            "values": [turnover_dict[month] for month in turnover_dict.keys()]  # Monthly revenue values
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+    
+# most popular products:
+def get_most_popular_products(warehouse_id):
+    from app import db, Product, Inventory, OrderItem
+    """
+    Get the most popular products for a given warehouse.
+    :param warehouse_id: The ID of the warehouse to calculate popularity for.
+    :return: Popular products in the format:
+             {"labels": ["Apple", "Banana", "Orange", ...], "values": [200, 150, 300, ...]}
+    """
+    try:
+        # Step 1: Get all Product_IDs managed by this warehouse
+        inventory_items = Inventory.query.filter(Inventory.Warehouse_ID == warehouse_id).all()
+        product_ids = [item.Product_ID for item in inventory_items]
+
+        if not product_ids:
+            return jsonify({'error': 'No products found in the inventory for this manager'}), 404
+
+        # Step 2: Calculate popularity based on quantity sold
+        popular_data = db.session.query(
+            Product.Name.label('product_name'),  # Product name for labels
+            func.sum(OrderItem.Quantity).label('total_quantity')  # Sum of quantities sold
+        ).join(OrderItem, OrderItem.Product_ID == Product.Product_ID) \
+         .filter(OrderItem.Product_ID.in_(product_ids)) \
+         .group_by(Product.Name) \
+         .order_by(func.sum(OrderItem.Quantity).desc()) \
+         .all()
+
+        if not popular_data:
+            return jsonify({'error': 'No sales data found for these products'}), 404
+
+        # Step 3: Prepare the response
+        labels = [row.product_name for row in popular_data]
+        values = [row.total_quantity for row in popular_data]
+
+        response = {
+            "labels": labels,
+            "values": values
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500

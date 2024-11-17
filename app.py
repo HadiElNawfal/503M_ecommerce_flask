@@ -460,8 +460,49 @@ def view_inventory_by_id():
     return APIs.inventory.view_inventory(warehouse_id)
 
 # for the inventory reports:
+@app.route('/api/inventory/turnover/<int:user_id>', methods=['GET'])
+@permission_required(['view_inventory'])
+@verify_csrf
+def monthly_inventory_report_by_id():
+    authenticated, user_data = is_authenticated()
+    if not authenticated:
+        return jsonify({'error': 'Unauthorized'}), 401
 
+    user_id = user_data.get('user_id')
+    
+    # Fetch warehouse data using the helper function
+    data, error = fetch_warehouse_by_user_id(user_id)
 
+    if error:
+        status_code = 404 if 'No warehouse found' in error else 500
+        return jsonify({'error': error}), status_code
+
+    warehouse_id = data['Warehouse_ID']
+    return APIs.inventory.get_monthly_inventory_turnover(warehouse_id) 
+
+# for the most popular products:
+@app.route('/api/inventory/popular-products/<int:user_id>', methods=['GET'])
+@permission_required(['view_inventory'])
+@verify_csrf
+def most_popular_products_by_id():
+    """
+    Retrieve the most popular products for the inventory managed by the given user.
+    """
+    authenticated, user_data = is_authenticated()
+    if not authenticated:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    user_id = user_data.get('user_id')
+    
+    # Fetch warehouse data using the helper function
+    data, error = fetch_warehouse_by_user_id(user_id)
+
+    if error:
+        status_code = 404 if 'No warehouse found' in error else 500
+        return jsonify({'error': error}), status_code
+
+    warehouse_id = data['Warehouse_ID']
+    return APIs.inventory.get_most_popular_products(warehouse_id)
 
 
 # Orders Management:
@@ -471,7 +512,7 @@ def view_inventory_by_id():
 def create_order():
     return APIs.orders.create_order()
 
-@app.route('/api/update_order_status', methods=['PUT'])
+@app.route('/api/update_order_status/<int:order_id>', methods=['PUT'])
 @permission_required(['update_order'])
 @verify_csrf
 def update_order(order_id):
@@ -502,13 +543,13 @@ def remove_order_item():
 def add_return():
     return APIs.orders.add_return()
 
-@app.route('/api/remove_return', methods=['DELETE'])
+@app.route('/api/remove_return/<int:return_id>', methods=['DELETE'])
 @permission_required(['remove_return'])
 @verify_csrf
 def remove_return(return_id):
     return APIs.orders.remove_return(return_id)
 
-@app.route('/api/update_return', methods=['PUT'])
+@app.route('/api/update_return/<int:return_id>', methods=['PUT'])
 @permission_required(['update_return'])
 @verify_csrf
 def update_return(return_id):
@@ -519,7 +560,6 @@ def update_return(return_id):
 @verify_csrf
 def view_return():
     return APIs.orders.view_all_returns()
-
 
 
 
