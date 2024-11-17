@@ -448,10 +448,11 @@ def get_dashboard():
         # Query pending orders
         pending_orders = db.session.query(Order).filter_by(Status='Pending').count()
 
-        # Query orders placed today
-        today = datetime.utcnow().date()
-        orders_today = db.session.query(Order).filter(Order.Order_Date == today).count()
-
+        # # Query orders placed today
+        # today = datetime.utcnow().date()
+        # orders_today = db.session.query(Order).filter(Order.Order_Date == today).count()
+        orders_today = 0
+        
         # Query total customers, for now it will show 0
         total_customers = 0
 
