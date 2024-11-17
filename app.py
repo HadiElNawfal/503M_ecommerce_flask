@@ -280,15 +280,24 @@ def get_dashboard():
 import APIs
 
 #warehouses:
+def get_warehouse(warehouse_id):
+    return APIs.warehouse.get_warehouse(warehouse_id)
+
 @app.route('/api/warehouses', methods=['GET'])
 @permission_required(['view_warehouse'])
 def get_warehouses():
-    return APIs.warehouse.get_warehouses()
+    authenticated, user_data = is_authenticated()
+    if not authenticated:
+        return jsonify({'error': 'Unauthorized'}), 401
+    user_id = user_data.get('user_id')
+    user_roles = user_data.get('roles', [])
+    if 'Admin' in user_roles:
+        return APIs.warehouse.get_warehouses()
+    else:
+        return APIs.warehouse.get_warehouse(user_id)
 
-@app.route('/api/warehouses/<int:warehouse_id>', methods=['GET'])
-@permission_required(['view_warehouse'])
-def get_warehouse(warehouse_id):
-    return APIs.warehouse.get_warehouse(warehouse_id)
+
+
 
 
 @app.route('/api/create_warehouse', methods=['POST'])
@@ -360,6 +369,7 @@ def delete_product(product_id):
     return APIs.product.delete_product(product_id)
 
 #Bulk upload / CSV File:
+# should FIXXXXXXX
 @app.route('/api/upload_products', methods=['POST'])
 @role_required(['Product Manager'])
 @verify_csrf
@@ -407,9 +417,6 @@ def fetch_warehouse_by_user_id(user_id):
     except Exception as e:
         return None, f'An error occurred: {str(e)}'
 
-
-@app.route('/api/get-warehouse-by-user/<int:user_id>', methods=['GET'])
-@permission_required(['view_warehouse'])
 def get_warehouse_by_user_id_route(user_id):
     data, error = fetch_warehouse_by_user_id(user_id)
     
@@ -448,6 +455,7 @@ def view_inventory_by_id():
         return jsonify({'error': 'Unauthorized'}), 401
 
     user_id = user_data.get('user_id')
+    user_roles = user_data.get('roles', [])
     
     # Fetch warehouse data using the helper function
     data, error = fetch_warehouse_by_user_id(user_id)
@@ -455,9 +463,11 @@ def view_inventory_by_id():
     if error:
         status_code = 404 if 'No warehouse found' in error else 500
         return jsonify({'error': error}), status_code
-
-    warehouse_id = data['Warehouse_ID']
-    return APIs.inventory.view_inventory(warehouse_id)
+    if 'Admin' in user_roles:
+        return APIs.inventory.view_inventory()
+    else:
+        warehouse_id = data['Warehouse_ID']
+        return APIs.inventory.view_inventory(warehouse_id)
 
 # for the inventory reports:
 @app.route('/api/inventory/turnover', methods=['GET'])

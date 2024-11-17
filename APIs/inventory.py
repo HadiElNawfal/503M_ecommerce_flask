@@ -45,40 +45,63 @@ def edit_inventory(warehouse_id):
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
 #view inventory:
-def view_inventory(warehouse_id):
-    from app import Inventory, Product, Warehouse
+def view_inventory(warehouse_id=None):
+    from app import Inventory, Product, Warehouse, db
     """
-    View inventory for a specific warehouse.
-    :param warehouse_id: The ID of the warehouse whose inventory is to be viewed.
+    View inventory for a specific warehouse or all warehouses.
+    :param warehouse_id: (Optional) The ID of the warehouse whose inventory is to be viewed.
     """
     try:
-        # Check if the warehouse exists
-        warehouse = Warehouse.query.get(warehouse_id)
-        if not warehouse:
-            return jsonify({'error': f'Warehouse with ID {warehouse_id} not found'}), 404
+        # Query warehouses
+        if warehouse_id:
+            warehouse = Warehouse.query.get(warehouse_id)
+            if not warehouse:
+                return jsonify({'error': f'Warehouse with ID {warehouse_id} not found'}), 404
+            warehouses = [warehouse]  # Treat as a list for consistent processing
+        else:
+            warehouses = Warehouse.query.all()
+            if not warehouses:
+                return jsonify({'error': 'No warehouses found'}), 404
 
-        # Query inventory for the given warehouse
-        inventory_items = Inventory.query.filter_by(Warehouse_ID=warehouse_id).all()
+        # Prepare response data
+        response_data = []
+        for warehouse in warehouses:
+            inventory_items = Inventory.query.filter_by(Warehouse_ID=warehouse.Warehouse_ID).all()
 
-        # If no inventory is found, return an empty list
-        if not inventory_items:
-            return jsonify({'message': 'No inventory items found for this warehouse'}), 200
+            # If no inventory found for the warehouse, add an empty entry
+            if not inventory_items:
+                response_data.append({
+                    'Warehouse_ID': warehouse.Warehouse_ID,
+                    'Manager_ID': warehouse.Manager_ID,
+                    'Location': warehouse.Location,
+                    'Inventory': []
+                })
+                continue
 
-        # Format the response with inventory details
-        inventory_data = []
-        for item in inventory_items:
-            product = Product.query.get(item.Product_ID)  # Get the product details
-            inventory_data.append({
-                'Product_ID': item.Product_ID,
-                'Product_Name': product.Name if product else "Unknown Product",
-                'Stock_Level': item.Stock_Level,
-                'Warehouse_ID': item.Warehouse_ID,
+            # Gather inventory data for this warehouse
+            inventory_data = []
+            for item in inventory_items:
+                product = Product.query.get(item.Product_ID)  # Get the product details
+                inventory_data.append({
+                    'Product_ID': item.Product_ID,
+                    'Product_Name': product.Name if product else "Unknown Product",
+                    'Stock_Level': item.Stock_Level,
+                    'Warehouse_ID': item.Warehouse_ID,
+                })
+
+            # Append warehouse and inventory details
+            response_data.append({
+                'Warehouse_ID': warehouse.Warehouse_ID,
+                'Manager_ID': warehouse.Manager_ID,
+                'Location': warehouse.Location,
+                'Inventory': inventory_data
             })
 
-        return jsonify({
-            'Warehouse_ID': warehouse_id,
-            'Inventory': inventory_data
-        }), 200
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
