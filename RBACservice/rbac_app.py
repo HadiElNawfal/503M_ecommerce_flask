@@ -149,11 +149,11 @@ def create_users():
 
     # Create users for each role
     #create_user('admin', 'PUTEMAIL', 'admin123', roles['Admin'], two_factor_enabled=True)
-    create_user('admin', 'admin@example.com', 'admin123', roles['Admin'])
-    create_user('product_manager', 'pm@example.com', 'product123', roles['Product Manager'])
-    create_user('inventory_manager', 'im@example.com', 'inventory123', roles['Inventory Manager'])
-    create_user('order_manager', 'om@example.com', 'order123', roles['Order Manager'])
-    create_user('customer', 'customer@example.com', 'customer123', roles['Customer'])
+    create_user('admin', 'admin@example.com', 'Admin123!', roles['Admin'])
+    create_user('product_manager', 'pm@example.com', 'Product123!', roles['Product Manager'])
+    create_user('inventory_manager', 'im@example.com', 'Inventory123!', roles['Inventory Manager'])
+    create_user('order_manager', 'om@example.com', 'Order123!', roles['Order Manager'])
+    create_user('customer', 'customer@example.com', 'Customer123!', roles['Customer'])
 # Initialize the database
 with app.app_context():
     db.create_all()
@@ -377,8 +377,8 @@ def verify_token():
         for role in user.roles:
             permissions.extend([perm.Name for perm in role.permissions])
         permissions = list(set(permissions))  # Remove duplicates
-        print(f"User Roles: {roles}")
-        print(f"User Permissions: {permissions}")
+        # print(f"User Roles: {roles}")
+        # print(f"User Permissions: {permissions}")
         return jsonify({
             'user_id': user_id,
             'roles': roles,

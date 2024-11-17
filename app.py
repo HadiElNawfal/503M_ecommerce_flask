@@ -35,41 +35,199 @@ def create_sample_data():
         return
 
     # Create sample categories
-    electronics = Category(Category_Name='Electronics')
-    books = Category(Category_Name='Books')
+    playstation = Category(Category_Name='Playstation')
+    xbox = Category(Category_Name='Xbox')
+    nintendo = Category(Category_Name='Nintendo')
+    gamecube = Category(Category_Name='GameCube')
 
     # Create sample subcategories
-    mobiles = SubCategory(SubCategory_Name='Mobile Phones', Description='Smartphones and accessories')
-    fiction = SubCategory(SubCategory_Name='Fiction', Description='Fictional books')
+    console = SubCategory(SubCategory_Name='Console', Description='Gaming consoles')
+    controller = SubCategory(SubCategory_Name='Controller', Description='Gaming controllers')
+    video_game = SubCategory(SubCategory_Name='Video Game', Description='Games for consoles')
 
-    # Add categories and subcategories to session
-    db.session.add_all([electronics, books, mobiles, fiction])
+    # Add categories and subcategories to the session
+    db.session.add_all([playstation, xbox, nintendo, gamecube, console, controller, video_game])
     db.session.commit()
 
     # Create sample products
-    iphone = Product(
-        Name='iPhone 14',
-        Price=999.99,
-        Description='Latest Apple smartphone',
-        ImageURL='https://example.com/iphone14.jpg',
-        Category_ID=electronics.Category_ID,
-        SubCategory_ID=mobiles.SubCategory_ID
-    )
-    gatsby = Product(
-        Name='The Great Gatsby',
-        Price=10.99,
-        Description='Classic novel by F. Scott Fitzgerald',
-        ImageURL='https://example.com/gatsby.jpg',
-        Category_ID=books.Category_ID,
-        SubCategory_ID=fiction.SubCategory_ID
-    )
+    products = [
+        Product(
+            Name='Playstation 5 Console',
+            Price=499.99,
+            Description='Latest Sony Playstation 5 Console',
+            ImageURL='https://m.media-amazon.com/images/I/41PYg1k+laL._SX342_SY445_.jpg',
+            Category_ID=playstation.Category_ID,
+            SubCategory_ID=console.SubCategory_ID
+        ),
+        Product(
+            Name='Xbox Series X Console',
+            Price=499.99,
+            Description='Latest Microsoft Xbox Series X Console',
+            ImageURL='https://m.media-amazon.com/images/I/51bcwM0qLaL._SL1500_.jpg',
+            Category_ID=xbox.Category_ID,
+            SubCategory_ID=console.SubCategory_ID
+        ),
+        Product(
+            Name='Nintendo Switch Console',
+            Price=299.99,
+            Description='Nintendo Switch Console',
+            ImageURL='https://m.media-amazon.com/images/I/71wpE+ZIehL._SL1500_.jpg',
+            Category_ID=nintendo.Category_ID,
+            SubCategory_ID=console.SubCategory_ID
+        ),
+        Product(
+            Name='PS5 DualSense Controller',
+            Price=69.99,
+            Description='Sony PS5 DualSense Wireless Controller',
+            ImageURL='https://m.media-amazon.com/images/I/31j0hxQyh2L._SX300_SY300_QL70_FMwebp_.jpg',
+            Category_ID=playstation.Category_ID,
+            SubCategory_ID=controller.SubCategory_ID
+        ),
+        Product(
+            Name='Xbox Wireless Controller',
+            Price=59.99,
+            Description='Microsoft Xbox Wireless Controller',
+            ImageURL='https://m.media-amazon.com/images/I/51vVALvvHvL._SL1500_.jpg',
+            Category_ID=xbox.Category_ID,
+            SubCategory_ID=controller.SubCategory_ID
+        ),
+        Product(
+            Name='Nintendo Switch Pro Controller',
+            Price=69.99,
+            Description='Nintendo Switch Pro Controller',
+            ImageURL='https://m.media-amazon.com/images/I/71F5nnoo8gL._SL1300_.jpg',
+            Category_ID=nintendo.Category_ID,
+            SubCategory_ID=controller.SubCategory_ID
+        ),
+        Product(
+            Name='The Last of Us Part II',
+            Price=39.99,
+            Description='Action-adventure game for PlayStation',
+            ImageURL='https://m.media-amazon.com/images/I/71p8G+YeA6L._SL1500_.jpg',
+            Category_ID=playstation.Category_ID,
+            SubCategory_ID=video_game.SubCategory_ID
+        ),
+        Product(
+            Name='Halo Infinite',
+            Price=59.99,
+            Description='First-person shooter game for Xbox',
+            ImageURL='https://m.media-amazon.com/images/I/81nWynmiDPL._SL1500_.jpg',
+            Category_ID=xbox.Category_ID,
+            SubCategory_ID=video_game.SubCategory_ID
+        ),
+        Product(
+            Name='Super Smash Bros. Ultimate',
+            Price=59.99,
+            Description='Fighting game for Nintendo Switch',
+            ImageURL='https://m.media-amazon.com/images/I/815hF0mZBdL._SL1500_.jpg',
+            Category_ID=nintendo.Category_ID,
+            SubCategory_ID=video_game.SubCategory_ID
+        ),
+        Product(
+            Name='GameCube Controller',
+            Price=29.99,
+            Description='Classic GameCube controller',
+            ImageURL='https://m.media-amazon.com/images/I/31neCVwAC+L.jpg',
+            Category_ID=gamecube.Category_ID,
+            SubCategory_ID=controller.SubCategory_ID
+        ),
+    ]
 
-    # Add products to session
-    db.session.add_all([iphone, gatsby])
+    # Add products to the session
+    db.session.add_all(products)
+    db.session.commit()
+    
+    # Create sample warehouses
+    warehouse1 = Warehouse(
+        Manager_ID=1,
+        Location='Los Angeles, CA'
+    )
+    warehouse2 = Warehouse(
+        Manager_ID=2,
+        Location='New York, NY'
+    )
+    db.session.add_all([warehouse1, warehouse2])
+    db.session.commit()
+
+    # Create sample inventories
+    inventory1 = Inventory(
+        Product_ID=products[0].Product_ID,
+        Warehouse_ID=warehouse1.Warehouse_ID,
+        Stock_Level=50
+    )
+    inventory2 = Inventory(
+        Product_ID=products[1].Product_ID,
+        Warehouse_ID=warehouse2.Warehouse_ID,
+        Stock_Level=30
+    )
+    inventory3 = Inventory(
+        Product_ID=products[2].Product_ID,
+        Warehouse_ID=warehouse1.Warehouse_ID,
+        Stock_Level=20
+    )
+    inventory4 = Inventory(
+        Product_ID=products[3].Product_ID,
+        Warehouse_ID=warehouse2.Warehouse_ID,
+        Stock_Level=100
+    )
+    db.session.add_all([inventory1, inventory2, inventory3, inventory4])
+    db.session.commit()
+
+    # Create sample orders
+    order1 = Order(
+        Total_Amount=559.98,
+        Order_Date=datetime(2024, 3, 15).date(),
+        Status='Processing',
+        Total_Price=559.98
+    )
+    order2 = Order(
+        Total_Amount=299.99,
+        Order_Date=datetime(2024, 2, 28).date(),
+        Status='Shipped',
+        Total_Price=299.99
+    )
+    db.session.add_all([order1, order2])
+    db.session.commit()
+
+    # Create sample order items
+    order_item1 = OrderItem(
+        Order_ID=order1.Order_ID,
+        Product_ID=products[0].Product_ID,
+        Quantity=1,
+        Price=499.99
+    )
+    order_item2 = OrderItem(
+        Order_ID=order1.Order_ID,
+        Product_ID=products[3].Product_ID,
+        Quantity=1,
+        Price=59.99
+    )
+    order_item3 = OrderItem(
+        Order_ID=order2.Order_ID,
+        Product_ID=products[2].Product_ID,
+        Quantity=1,
+        Price=299.99
+    )
+    db.session.add_all([order_item1, order_item2, order_item3])
+    db.session.commit()
+
+    # Create sample returns
+    return1 = Return(
+        Return_Date=datetime(2024, 5, 10).date(),
+        Status='Pending',
+        Refund_Amount=59.99
+    )
+    return2 = Return(
+        Return_Date=datetime(2024, 7, 19).date(),
+        Status='Completed',
+        Refund_Amount=299.99
+    )
+    db.session.add_all([return1, return2])
     db.session.commit()
 
 # Initialize the database and create sample data
 with app.app_context():
+    db.drop_all()
     db.create_all()
     create_sample_data()
     APIs.inventory.initialize_inventory()
@@ -125,7 +283,7 @@ def permission_required(required_permissions):
 # Set up the path to your certificates
 cert_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs", "flask.crt")
 key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs", "flask.key")
-print(cert_path, key_path)
+# print(cert_path, key_path)
 # Enforce HTTPS with Flask-Talisman for security headers
 Talisman(app, content_security_policy={
     'default-src': ["'self'"],
@@ -169,7 +327,7 @@ def generate_admin_url():
     return '/admin-' + ''.join(random.choices(string.ascii_letters + string.digits, k=12))
 
 admin_url = generate_admin_url()
-print(f"Admin URL: {admin_url}")  # For server logs only
+# print(f"Admin URL: {admin_url}")  # For server logs only
 
 @app.route('/api/get-csrf-token', methods=['GET'])
 def get_csrf_token():

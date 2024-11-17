@@ -2,6 +2,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from db_config import DB_CONFIG
+from sqlalchemy import event
+from urllib.parse import urlparse
+import re
 
 db = SQLAlchemy()
 
@@ -51,6 +54,51 @@ class Product(db.Model):
     subcategory = db.relationship('SubCategory', back_populates='products')
     inventories = db.relationship('Inventory', back_populates='product')
     order_items = db.relationship('OrderItem', back_populates='product')
+    
+    @staticmethod
+    def validate_image_url(url):
+        if not url:
+            return True  # Allow empty URLs
+            
+        try:
+            # Parse URL
+            parsed = urlparse(url)
+            
+            # Check URL scheme
+            if parsed.scheme not in ['http', 'https']:
+                raise ValueError("URL must use http or https protocol")
+                
+            # Check for valid hostname
+            if not parsed.netloc:
+                raise ValueError("Invalid URL format")
+                
+            # Check for common image extensions
+            valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+            if not any(url.lower().endswith(ext) for ext in valid_extensions):
+                raise ValueError("URL must point to an image file")
+                
+            # Check for potentially malicious patterns
+            dangerous_patterns = [
+                'javascript:',
+                'data:',
+                '<script',
+                'onclick=',
+                'onerror='
+            ]
+            if any(pattern in url.lower() for pattern in dangerous_patterns):
+                raise ValueError("URL contains potentially malicious content")
+                
+            return True
+            
+        except Exception as e:
+            raise ValueError(f"Invalid image URL: {str(e)}")
+
+# SQLAlchemy event listener to validate URL before insert/update
+@event.listens_for(Product, 'before_insert')
+@event.listens_for(Product, 'before_update')
+def validate_url_before_save(mapper, connection, target):
+    if target.ImageURL:
+        target.validate_image_url(target.ImageURL)
 
 class Inventory(db.Model):
     __tablename__ = 'inventory'

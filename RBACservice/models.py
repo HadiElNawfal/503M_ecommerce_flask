@@ -37,6 +37,27 @@ class User(db.Model):
     roles = db.relationship('Role', secondary=user_roles, back_populates='users')
 
     def set_password(self, password):
+        # Check minimum length
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        # Check maximum length
+        if len(password) > 128:
+            raise ValueError("Password must be less than 128 characters")
+
+        # Check for required character types
+        if not any(c.isupper() for c in password):
+            raise ValueError("Password must contain at least one uppercase letter")
+            
+        if not any(c.islower() for c in password):
+            raise ValueError("Password must contain at least one lowercase letter")
+            
+        if not any(c.isdigit() for c in password):
+            raise ValueError("Password must contain at least one number")
+            
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password):
+            raise ValueError("Password must contain at least one special character")
+
+    # If all validations pass, hash and store the password
         self.Password_Hash = generate_password_hash(password)
 
     def check_password(self, password):
