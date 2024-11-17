@@ -79,7 +79,6 @@ class Order(db.Model):
     
     # Relationship to OrderItem and Return
     order_items = db.relationship('OrderItem', back_populates='order')
-    returns = db.relationship('Return', back_populates='order')
 
 class OrderItem(db.Model):
     __tablename__ = 'order_item'
@@ -101,9 +100,4 @@ class Return(db.Model):
     Status = db.Column(db.String(50), nullable=False)
     Refund_Amount = db.Column(db.Float, nullable=False)
     
-    # Foreign key to Order
-    Order_ID = db.Column(db.Integer, db.ForeignKey('order.Order_ID'), nullable=False)
-    
-    # Back-populates relationship
-    order = db.relationship('Order', back_populates='returns')
 

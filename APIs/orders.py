@@ -22,9 +22,8 @@ def create_order():
         total_amount = data.get('Total_Amount')
         order_date = data.get('Order_Date')
         status = data.get('Status')
-        total_price = data.get('Total_Price')
 
-        if not all([total_amount, order_date, status, total_price]):
+        if not all([total_amount, order_date, status]):
             return jsonify({'error': 'All fields (Total_Amount, Order_Date, Status, Total_Price) are required'}), 400
 
         # Create and save the new order
@@ -32,7 +31,7 @@ def create_order():
             Total_Amount=total_amount,
             Order_Date=order_date,
             Status=status,
-            Total_Price=total_price
+            Total_Price=0
         )
         db.session.add(new_order)
         db.session.commit()
@@ -180,4 +179,142 @@ def remove_order_item():
     
     
 
-# return item, should delete from orders
+# return item, (should delete from orders)
+def add_return():
+    from app import db, Order, Inventory, Return
+    """
+    Add a new return.
+    Expected JSON payload:
+    {
+        "Order_ID": 1,
+        "Return_Date": "2024-11-17",
+        "Status": "Processed",
+        "Refund_Amount": 150.0
+    }
+    """
+    try:
+        data = request.get_json()
+
+        # Extract and validate required fields
+        order_id = data.get('Order_ID')
+        return_date = data.get('Return_Date')
+        status = data.get('Status')
+        refund_amount = data.get('Refund_Amount')
+
+        if not all([order_id, return_date, status, refund_amount]):
+            return jsonify({'error': 'All fields (Order_ID, Return_Date, Status, Refund_Amount) are required'}), 400
+
+        # Fetch the order to be returned
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({'error': f'Order with ID {order_id} not found'}), 404
+
+        # Restock inventory for each order item
+        for item in order.order_items:
+            inventory = Inventory.query.filter_by(
+                Product_ID=item.Product_ID, Warehouse_ID=item.product.inventories[0].Warehouse_ID
+            ).first()
+
+            if inventory:
+                inventory.Stock_Level += item.Quantity
+            db.session.delete(item)
+            
+        # Delete the order from the Order table
+        db.session.delete(order)
+
+        # Create a new return
+        new_return = Return(
+            Return_Date=return_date,
+            Status=status,
+            Refund_Amount=refund_amount,
+        )
+        db.session.add(new_return)
+
+        # Commit changes to the database
+        db.session.commit()
+
+        return jsonify({'message': 'Return created successfully', 'Return_ID': new_return.Return_ID}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+# Remove return:
+def remove_return(return_id):
+    from app import db, Return
+    """
+    Remove a return by ID.
+    """
+    try:
+        # Fetch the return entry
+        return_entry = Return.query.get(return_id)
+        if not return_entry:
+            return jsonify({'error': f'Return with ID {return_id} not found'}), 404
+
+        # Delete the return entry
+        db.session.delete(return_entry)
+        db.session.commit()
+
+        return jsonify({'message': f'Return with ID {return_id} deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+# Update return:
+def update_return_status(return_id):
+    from app import db, Return
+    """
+    Update the status of a return.
+    Expected JSON payload:
+    {
+        "Status": "Completed"
+    }
+    """
+    try:
+        data = request.get_json()
+        new_status = data.get('Status')
+
+        if not new_status:
+            return jsonify({'error': 'Status is required'}), 400
+
+        # Fetch the return entry
+        return_entry = Return.query.get(return_id)
+        if not return_entry:
+            return jsonify({'error': f'Return with ID {return_id} not found'}), 404
+
+        # Update the status
+        return_entry.Status = new_status
+        db.session.commit()
+
+        return jsonify({'message': 'Return status updated successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+# View all returns:
+def view_all_returns():
+    from app import db, Return
+    """
+    View all returns in the system.
+    """
+    try:
+        # Query all returns from the database
+        returns = Return.query.all()
+
+        if not returns:
+            return jsonify({'message': 'No returns found'}), 200
+
+        # Serialize the returns
+        return_list = [
+            {
+                'Return_ID': return_entry.Return_ID,
+                'Return_Date': str(return_entry.Return_Date),
+                'Status': return_entry.Status,
+                'Refund_Amount': return_entry.Refund_Amount,
+                'Order_ID': return_entry.Order_ID
+            }
+            for return_entry in returns
+        ]
+
+        return jsonify(return_list), 200
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500

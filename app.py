@@ -493,5 +493,33 @@ def create_order_item():
 def remove_order_item():
     return APIs.orders.remove_order_item()
 
+# Returns APIs:
+@app.route('/api/add_return', methods=['POST'])
+@permission_required(['add_return'])
+@verify_csrf
+def add_return():
+    return APIs.orders.add_return()
+
+@app.route('/api/remove_return', methods=['DELETE'])
+@permission_required(['remove_return'])
+@verify_csrf
+def remove_return():
+    return APIs.orders.remove_return()
+
+@app.route('/api/update_return', methods=['PUT'])
+@permission_required(['update_return'])
+@verify_csrf
+def update_return():
+    return APIs.orders.update_return_status()
+
+@app.route('/api/view_return', methods=['DELETE'])
+@permission_required(['view_return'])
+@verify_csrf
+def view_return():
+    return APIs.orders.view_all_returns()
+
+
+
+
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path), host='0.0.0.0', port=5000, debug=True)
