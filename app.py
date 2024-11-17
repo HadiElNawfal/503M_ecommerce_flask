@@ -277,8 +277,9 @@ def get_dashboard():
 
 #API Calls:
 # import APIS:
-#Should remove all the csrf exempts
 import APIs
+
+#warehouses:
 @app.route('/api/warehouses', methods=['GET'])
 @permission_required(['view_warehouse'])
 def get_warehouses():
@@ -385,7 +386,7 @@ def upload_products():
 
 
 
-
+#inventory:
 
 def fetch_warehouse_by_user_id(user_id):
     """
@@ -458,6 +459,7 @@ def view_inventory_by_id():
     warehouse_id = data['Warehouse_ID']
     return APIs.inventory.view_inventory(warehouse_id)
 
+# for the inventory reports:
 
 
 
@@ -472,8 +474,8 @@ def create_order():
 @app.route('/api/update_order_status', methods=['PUT'])
 @permission_required(['update_order'])
 @verify_csrf
-def update_order():
-    return APIs.orders.update_order_status()
+def update_order(order_id):
+    return APIs.orders.update_order_status(order_id)
 
 @app.route('/api/view_all_orders', methods=['GET'])
 @permission_required(['view_order'])
@@ -503,14 +505,14 @@ def add_return():
 @app.route('/api/remove_return', methods=['DELETE'])
 @permission_required(['remove_return'])
 @verify_csrf
-def remove_return():
-    return APIs.orders.remove_return()
+def remove_return(return_id):
+    return APIs.orders.remove_return(return_id)
 
 @app.route('/api/update_return', methods=['PUT'])
 @permission_required(['update_return'])
 @verify_csrf
-def update_return():
-    return APIs.orders.update_return_status()
+def update_return(return_id):
+    return APIs.orders.update_return_status(return_id)
 
 @app.route('/api/view_return', methods=['DELETE'])
 @permission_required(['view_return'])
