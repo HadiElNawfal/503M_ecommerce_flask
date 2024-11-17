@@ -460,7 +460,7 @@ def view_inventory_by_id():
     return APIs.inventory.view_inventory(warehouse_id)
 
 # for the inventory reports:
-@app.route('/api/inventory/turnover/<int:user_id>', methods=['GET'])
+@app.route('/api/inventory/turnover', methods=['GET'])
 @permission_required(['view_inventory'])
 @verify_csrf
 def monthly_inventory_report_by_id():
@@ -481,7 +481,7 @@ def monthly_inventory_report_by_id():
     return APIs.inventory.get_monthly_inventory_turnover(warehouse_id) 
 
 # for the most popular products:
-@app.route('/api/inventory/popular-products/<int:user_id>', methods=['GET'])
+@app.route('/api/inventory/popular-products', methods=['GET'])
 @permission_required(['view_inventory'])
 @verify_csrf
 def most_popular_products_by_id():
