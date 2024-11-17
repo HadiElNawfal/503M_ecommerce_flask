@@ -296,3 +296,93 @@ def upload_products():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+# for csv files/Bulk update:
+# for CSV files/Bulk upload:
+def upload_products():
+    from app import db, Product, Category, SubCategory
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    # Securely check if the uploaded file is a CSV
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'error': 'Invalid file type. Only CSV files are allowed'}), 400
+
+    try:
+        # Limit the size of the uploaded file (e.g., 2MB)
+        file.seek(0, 2)  # Move to the end of the file
+        file_length = file.tell()
+        file.seek(0)  # Reset file pointer to the beginning
+
+        if file_length > 2 * 1024 * 1024:
+            return jsonify({'error': 'File size exceeds the allowed limit of 2MB'}), 400
+
+        # Decode and read the CSV file securely
+        stream = io.StringIO(file.stream.read().decode('utf-8', errors='ignore'))
+        csv_reader = csv.DictReader(stream)
+        products_added = []
+
+        for row in csv_reader:
+            # Extract and validate required fields
+            name = row.get('Name')
+            price = row.get('Price')
+            category_id = row.get('Category_ID')
+            subcategory_id = row.get('SubCategory_ID')
+
+            if not all([name, price, category_id, subcategory_id]):
+                continue  # Skip incomplete rows
+
+            try:
+                price = float(price)
+                category_id = int(category_id)
+                subcategory_id = int(subcategory_id)
+            except ValueError:
+                continue  # Skip rows with invalid data types
+
+            # Optional fields with defaults
+            description = row.get('Description', '')
+            image_url = row.get('ImageURL', '')
+            listed = row.get('Listed', 'True').strip().lower() == 'true'
+            discount_percentage = row.get('Discount_Percentage', '0')
+
+            try:
+                discount_percentage = int(discount_percentage)
+                if not (0 <= discount_percentage <= 100):
+                    continue  # Skip invalid discount percentages
+            except ValueError:
+                continue  # Skip if discount percentage is not an integer
+
+            # Check if the category and subcategory exist
+            category = Category.query.get(category_id)
+            subcategory = SubCategory.query.get(subcategory_id)
+
+            if not category or not subcategory:
+                continue  # Skip if category or subcategory doesn't exist
+
+            # Create a new Product instance
+            product = Product(
+                Name=name,
+                Price=price,
+                Description=description,
+                ImageURL=image_url,
+                Listed=listed,
+                Discount_Percentage=discount_percentage,
+                Category_ID=category_id,
+                SubCategory_ID=subcategory_id
+            )
+            db.session.add(product)
+            products_added.append(product)
+
+        # Commit all changes to the database
+        db.session.commit()
+        return jsonify({'message': f'{len(products_added)} products added successfully'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
