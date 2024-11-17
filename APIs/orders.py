@@ -91,7 +91,8 @@ def view_all_orders():
         # Update the order
         order.Total_Price = total_price
         order.Total_Amount = total_amount
-            
+        
+        orders = db.session.query(Order.Order_ID).all()
         # Serialize the orders
         order_list = [
             {
