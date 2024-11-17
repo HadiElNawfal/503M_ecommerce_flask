@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, session, make_response
+from flask import Flask, jsonify, request, session, make_response, url_for
 from flask_talisman import Talisman
 from functools import wraps
 from dotenv import load_dotenv
@@ -219,6 +219,30 @@ def login():
     except requests.exceptions.RequestException as e:
         print(f"Error contacting RBAC service: {e}")
         return jsonify({'error': 'Authentication service unavailable'}), 503
+
+@app.route('/api/setup-2fa', methods=['POST'])
+def proxy_setup_two_factor():
+    data = request.get_json()
+    response = requests.post(f'{RBAC_SERVICE_URL}/api/setup-2fa', json=data, verify=CA_CERT_PATH)
+    return (response.content, response.status_code, response.headers.items())
+
+@app.route('/api/verify-2fa', methods=['POST'])
+def proxy_verify_two_factor():
+    data = request.get_json()
+    response = requests.post(f'{RBAC_SERVICE_URL}/api/verify-2fa', json=data, verify=CA_CERT_PATH)
+    return (response.content, response.status_code, response.headers.items())
+
+@app.route('/api/request-password-reset', methods=['POST'])
+def proxy_request_password_reset():
+    data = request.get_json()
+    response = requests.post(f'{RBAC_SERVICE_URL}/api/request-password-reset', json=data, verify=CA_CERT_PATH)
+    return (response.content, response.status_code, response.headers.items())
+
+@app.route('/api/reset-password/<token>', methods=['POST'])
+def proxy_reset_password(token):
+    data = request.get_json()
+    response = requests.post(f'{RBAC_SERVICE_URL}/api/reset-password/{token}', json=data, verify=CA_CERT_PATH)
+    return (response.content, response.status_code, response.headers.items())
     
 @app.route('/api/get-admin-url', methods=['GET'])
 def get_admin_url():
@@ -371,7 +395,7 @@ def delete_product(product_id):
 #Bulk upload / CSV File:
 # should FIXXXXXXX
 @app.route('/api/upload_products', methods=['POST'])
-@role_required(['Product Manager'])
+@role_required(['Product Manager', 'Admin'])
 @verify_csrf
 def upload_products():
     return APIs.product.upload_products()
@@ -397,7 +421,7 @@ def upload_products():
 
 
 #inventory:
-
+@permission_required(['view_warehouse'])
 def fetch_warehouse_by_user_id(user_id):
     """
     Retrieve the Warehouse_ID based on the given user ID (Manager_ID).
@@ -565,7 +589,7 @@ def remove_return(return_id):
 def update_return(return_id):
     return APIs.orders.update_return_status(return_id)
 
-@app.route('/api/view_return', methods=['DELETE'])
+@app.route('/api/view_return', methods=['GET'])
 @permission_required(['view_return'])
 @verify_csrf
 def view_return():

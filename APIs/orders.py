@@ -310,7 +310,7 @@ def view_all_returns():
                 'Return_Date': str(return_entry.Return_Date),
                 'Status': return_entry.Status,
                 'Refund_Amount': return_entry.Refund_Amount,
-                'Order_ID': return_entry.Order_ID
+                # 'Order_ID': return_entry.Order_ID
             }
             for return_entry in returns
         ]
