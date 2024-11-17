@@ -133,6 +133,7 @@ def create_order_item():
             Quantity=quantity,
             Price=price
         )
+        print(new_order_item)
         db.session.add(new_order_item)
         db.session.commit()
 
