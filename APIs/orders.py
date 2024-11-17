@@ -19,16 +19,15 @@ def create_order():
         data = request.get_json()
 
         # Extract and validate required fields
-        total_amount = data.get('Total_Amount')
         order_date = data.get('Order_Date')
         status = data.get('Status')
 
-        if not all([total_amount, order_date, status]):
+        if not all([order_date, status]):
             return jsonify({'error': 'All fields (Total_Amount, Order_Date, Status, Total_Price) are required'}), 400
 
         # Create and save the new order
         new_order = Order(
-            Total_Amount=total_amount,
+            Total_Amount=0,
             Order_Date=order_date,
             Status=status,
             Total_Price=0
@@ -81,7 +80,6 @@ def view_all_orders():
     try:
         # Query all orders from the database
         orders = Order.query.all()
-
         if not orders:
             return jsonify({'message': 'No orders found'}), 200
 
@@ -146,10 +144,48 @@ def create_order_item():
             db.session.commit()
             message = 'Order item added successfully'
 
-        # Recalculate the total price of the order
+        # Recalculate the total price and total amount of the order
         recalculate_order_total(order_id)
 
         return jsonify({'message': message}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+def remove_order_item():
+    from app import db, OrderItem, Order
+    """
+    Remove an order item.
+    Expected JSON payload:
+    {
+        "Order_ID": 1,
+        "Product_ID": 101
+    }
+    """
+    try:
+        data = request.get_json()
+
+        # Extract and validate required fields
+        order_id = data.get('Order_ID')
+        product_id = data.get('Product_ID')
+
+        if not all([order_id, product_id]):
+            return jsonify({'error': 'Order_ID and Product_ID are required'}), 400
+
+        # Find the order item
+        order_item = OrderItem.query.filter_by(Order_ID=order_id, Product_ID=product_id).first()
+
+        if not order_item:
+            return jsonify({'error': f'Order item with Order_ID {order_id} and Product_ID {product_id} not found'}), 404
+
+        # Delete the order item
+        db.session.delete(order_item)
+        db.session.commit()
+
+        # Recalculate the total price and total amount of the order
+        recalculate_order_total(order_id)
+
+        return jsonify({'message': 'Order item removed successfully'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
@@ -163,11 +199,16 @@ def recalculate_order_total(order_id):
     if not order:
         return
 
-    # Calculate the new total price
+    # Calculate the new total price and total amount
     total_price = sum(item.Quantity * item.Price for item in order.order_items)
+    total_amount = sum(item.Quantity for item in order.order_items)
+
+    # Update the order
     order.Total_Price = total_price
+    order.Total_Amount = total_amount  # Assuming this column exists in the `Order` model
 
     db.session.commit()
+
 
 
 #remove order item:
