@@ -103,9 +103,9 @@ def view_all_orders():
     
 #create order item:
 def create_order_item():
-    from app import db, OrderItem
+    from app import db, OrderItem, Order
     """
-    Create a new order item.
+    Create or update an order item.
     Expected JSON payload:
     {
         "Order_ID": 1,
@@ -126,21 +126,49 @@ def create_order_item():
         if not all([order_id, product_id, quantity, price]):
             return jsonify({'error': 'All fields (Order_ID, Product_ID, Quantity, Price) are required'}), 400
 
-        # Create and save the new order item
-        new_order_item = OrderItem(
-            Order_ID=order_id,
-            Product_ID=product_id,
-            Quantity=quantity,
-            Price=price
-        )
-        print(new_order_item)
-        db.session.add(new_order_item)
-        db.session.commit()
+        # Check if the product is already in the order
+        existing_order_item = OrderItem.query.filter_by(Order_ID=order_id, Product_ID=product_id).first()
 
-        return jsonify({'message': 'Order item added successfully'}), 201
+        if existing_order_item:
+            # If it exists, increment the quantity
+            existing_order_item.Quantity += quantity
+            db.session.commit()
+            message = 'Order item quantity updated successfully'
+        else:
+            # If it doesn't exist, create a new order item
+            new_order_item = OrderItem(
+                Order_ID=order_id,
+                Product_ID=product_id,
+                Quantity=quantity,
+                Price=price
+            )
+            db.session.add(new_order_item)
+            db.session.commit()
+            message = 'Order item added successfully'
+
+        # Recalculate the total price of the order
+        recalculate_order_total(order_id)
+
+        return jsonify({'message': message}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+
+def recalculate_order_total(order_id):
+    from app import db, Order, OrderItem
+
+    # Get the order and its items
+    order = Order.query.get(order_id)
+    if not order:
+        return
+
+    # Calculate the new total price
+    total_price = sum(item.Quantity * item.Price for item in order.order_items)
+    order.Total_Price = total_price
+
+    db.session.commit()
+
 
 #remove order item:
 def remove_order_item():
