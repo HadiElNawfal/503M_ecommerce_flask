@@ -683,11 +683,10 @@ def monthly_inventory_report_by_id():
         return jsonify({'error': 'Unauthorized'}), 401
 
     user_id = user_data.get('user_id')
-    
     # Fetch warehouse data using the helper function
     data, error = fetch_warehouse_by_user_id(user_id)
-
     if error:
+        print("errorrr i am done here")
         status_code = 404 if 'No warehouse found' in error else 500
         return jsonify({'error': error}), status_code
 

@@ -136,6 +136,7 @@ def initialize_inventory():
 
 # Assuming `warehouse_id` is passed to this function
 def get_monthly_inventory_turnover(warehouse_id):
+    print("here in get_monthly_inventory_turnover")
     from app import db, Inventory, Order, OrderItem
     print("Step 1: Starting the process...")
 
