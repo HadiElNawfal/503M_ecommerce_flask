@@ -143,7 +143,7 @@ def create_sample_data():
         Location='Los Angeles, CA'
     )
     warehouse2 = Warehouse(
-        Manager_ID=2,
+        Manager_ID=3,
         Location='New York, NY'
     )
     db.session.add_all([warehouse1, warehouse2])
@@ -635,13 +635,10 @@ def view_inventory_by_id():
     authenticated, user_data = is_authenticated()
     if not authenticated:
         return jsonify({'error': 'Unauthorized'}), 401
-
     user_id = user_data.get('user_id')
     user_roles = user_data.get('roles', [])
-    
     # Fetch warehouse data using the helper function
     data, error = fetch_warehouse_by_user_id(user_id)
-
     if error:
         status_code = 404 if 'No warehouse found' in error else 500
         return jsonify({'error': error}), status_code

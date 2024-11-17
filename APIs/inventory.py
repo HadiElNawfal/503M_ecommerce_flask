@@ -44,7 +44,6 @@ def edit_inventory(warehouse_id):
         db.session.rollback()  # Roll back transaction in case of error
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
-#view inventory:
 def view_inventory(warehouse_id=None):
     from app import Inventory, Product, Warehouse, db
     """
@@ -64,47 +63,26 @@ def view_inventory(warehouse_id=None):
                 return jsonify({'error': 'No warehouses found'}), 404
 
         # Prepare response data
-        response_data = []
+        inventory_data = []
         for warehouse in warehouses:
             inventory_items = Inventory.query.filter_by(Warehouse_ID=warehouse.Warehouse_ID).all()
 
-            # If no inventory found for the warehouse, add an empty entry
-            if not inventory_items:
-                response_data.append({
-                    'Warehouse_ID': warehouse.Warehouse_ID,
-                    'Manager_ID': warehouse.Manager_ID,
-                    'Location': warehouse.Location,
-                    'Inventory': []
-                })
-                continue
-
             # Gather inventory data for this warehouse
-            inventory_data = []
             for item in inventory_items:
                 product = Product.query.get(item.Product_ID)  # Get the product details
                 inventory_data.append({
                     'Product_ID': item.Product_ID,
                     'Product_Name': product.Name if product else "Unknown Product",
                     'Stock_Level': item.Stock_Level,
-                    'Warehouse_ID': item.Warehouse_ID,
+                    'Warehouse_ID': warehouse.Warehouse_ID,  # Ensure correct Warehouse_ID is included
                 })
-
-            # Append warehouse and inventory details
-            response_data.append({
-                'Warehouse_ID': warehouse.Warehouse_ID,
-                'Manager_ID': warehouse.Manager_ID,
-                'Location': warehouse.Location,
-                'Inventory': inventory_data
-            })
-
-        return jsonify(response_data), 200
+        # Return data in a consistent structure
+        return jsonify({'inventory': inventory_data}), 200
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
 
-    except Exception as e:
-        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
 def initialize_inventory():
     from app import db, Product, Warehouse, Inventory
