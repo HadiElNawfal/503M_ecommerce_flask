@@ -436,16 +436,39 @@ def logout():
 def get_data():
     return jsonify({"message": "Secure data transfer over HTTPS!"})
 
-@app.route('/api/dashboard')
-@role_required(['Admin'])
+@app.route('/api/dashboard', methods=['GET'])
+@role_required(['Admin'])  # Restrict access to Admin role
 def get_dashboard():
-    data= {
-        "totalProducts": 320,
-        "ordersToday": 15,
-        "totalCustomers": 1234,
-        "pendingOrders": 42
-}
-    return jsonify(data)
+    from app import db, Product, Order, User, Role
+
+    try:
+        # Query total products
+        total_products = db.session.query(Product).count()
+
+        # Query orders placed today
+        today = datetime.utcnow().date()
+        orders_today = db.session.query(Order).filter(Order.Order_Date == today).count()
+
+        # Query total customers, for now it will show 0
+        customer_role = db.session.query(Role).filter_by(Name='Customer').first()
+        total_customers = len(customer_role.users) if customer_role else 0
+
+        # Query pending orders
+        pending_orders = db.session.query(Order).filter_by(Status='Pending').count()
+
+        # Prepare the dashboard data
+        dashboard_data = {
+            'totalProducts': total_products,
+            'ordersToday': orders_today,
+            'totalCustomers': total_customers,
+            'pendingOrders': pending_orders
+        }
+
+        return jsonify(dashboard_data), 200
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+    
 
 
 
