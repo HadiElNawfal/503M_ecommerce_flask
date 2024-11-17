@@ -79,11 +79,11 @@ def view_all_orders():
     """
     try:
         # Query all orders from the database
-        orders = Order.query.all()
-        if not orders:
+        order_ids = [order_id[0] for order_id in db.session.query(Order.Order_ID).all()]
+        if not order_ids:
             return jsonify({'message': 'No orders found'}), 200
         # calculate and set its total (should be done before, but orders are input manually):
-        for order_id in orders:
+        for order_id in order_ids:
             order = Order.query.get(order_id)
             total_price = sum(item.Quantity * item.Price for item in order.order_items)
             total_amount = sum(item.Quantity for item in order.order_items)
