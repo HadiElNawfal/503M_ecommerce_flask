@@ -82,7 +82,16 @@ def view_all_orders():
         orders = Order.query.all()
         if not orders:
             return jsonify({'message': 'No orders found'}), 200
-
+        # calculate and set its total (should be done before, but orders are input manually):
+        for order_id in orders:
+            order = Order.query.get(order_id)
+            total_price = sum(item.Quantity * item.Price for item in order.order_items)
+            total_amount = sum(item.Quantity for item in order.order_items)
+        db.session.commit()
+        # Update the order
+        order.Total_Price = total_price
+        order.Total_Amount = total_amount
+            
         # Serialize the orders
         order_list = [
             {
@@ -191,23 +200,7 @@ def remove_order_item():
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
 
-def recalculate_order_total(order_id):
-    from app import db, Order, OrderItem
 
-    # Get the order and its items
-    order = Order.query.get(order_id)
-    if not order:
-        return
-
-    # Calculate the new total price and total amount
-    total_price = sum(item.Quantity * item.Price for item in order.order_items)
-    total_amount = sum(item.Quantity for item in order.order_items)
-
-    # Update the order
-    order.Total_Price = total_price
-    order.Total_Amount = total_amount  # Assuming this column exists in the `Order` model
-
-    db.session.commit()
 
 
 
@@ -241,13 +234,30 @@ def remove_order_item():
         # Delete the order item
         db.session.delete(order_item)
         db.session.commit()
-
+        recalculate_order_total(order_id)
         return jsonify({'message': 'Order item removed successfully'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
     
-    
+def recalculate_order_total(order_id):
+    from app import db, Order, OrderItem
+
+    # Get the order and its items
+    order = Order.query.get(order_id)
+    if not order:
+        return
+
+    # Calculate the new total price and total amount
+    total_price = sum(item.Quantity * item.Price for item in order.order_items)
+    total_amount = sum(item.Quantity for item in order.order_items)
+
+    # Update the order
+    order.Total_Price = total_price
+    order.Total_Amount = total_amount  # Assuming this column exists in the `Order` model
+
+    db.session.commit()
+
 
 # return item, (should delete from orders)
 def add_return():
