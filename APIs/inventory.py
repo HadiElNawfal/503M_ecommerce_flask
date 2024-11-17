@@ -131,55 +131,62 @@ def initialize_inventory():
 
 # inventory reports:
 # monthly turnover:
+
+
+# Assuming `warehouse_id` is passed to this function
 def get_monthly_inventory_turnover(warehouse_id):
-    from app import db, Warehouse, Inventory, OrderItem, Order
-    """
-    Get monthly inventory turnover for the inventory manager.
-    :param user_id: The ID of the inventory manager (username or user_id).
-    :return: Monthly revenue for the manager's inventory in the format:
-             {"labels": ["January", "February", ...], "values": [1000, 1500, ...]}
-    """
-    try:
-        # Step 2: Get all Product_IDs managed by this inventory manager
-        inventory_items = Inventory.query.filter(Inventory.Warehouse_ID.in_(warehouse_id)).all()
-        product_ids = [item.Product_ID for item in inventory_items]
+    from app import db, Inventory, Order, OrderItem
+    print("Step 1: Starting the process...")
 
-        if not product_ids:
-            return jsonify({'error': 'No products found in the inventory for this manager'}), 404
+    # Step 2: Get all Product_IDs managed by this inventory manager
+    inventory_items = Inventory.query.filter_by(Warehouse_ID=warehouse_id).all()
+    print("Step 2: Fetched inventory items:", inventory_items)
 
-        # Step 3: Calculate revenue per month based on orders
-        # Join OrderItem, Order, and filter by Product_ID and Order_Date
-        turnover_data = db.session.query(
-            extract('month', Order.Order_Date).label('month'),  # Extract month from the order date
-            func.sum(OrderItem.Quantity * OrderItem.Price).label('revenue')  # Calculate revenue
-        ).join(OrderItem, Order.Order_ID == OrderItem.Order_ID) \
-         .filter(OrderItem.Product_ID.in_(product_ids)) \
-         .group_by('month') \
-         .order_by('month') \
-         .all()
+    product_ids = [item.Product_ID for item in inventory_items]
+    print("Step 2: Extracted Product IDs:", product_ids)
 
-        # Step 4: Prepare the response in the desired format
-        month_labels = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
-        turnover_dict = {month: 0 for month in range(1, 13)}  # Initialize all months with 0 revenue
+    if not product_ids:
+        return jsonify({'error': 'No products found in the inventory for this manager'}), 404
 
-        for row in turnover_data:
-            month = row.month  # Extract the month
-            revenue = row.revenue  # Extract the revenue for the month
-            turnover_dict[month] = revenue
+    # Step 3: Calculate revenue per month based on orders
+    # Join OrderItem and Order, and filter by Product_ID and Order_Date
+    turnover_data = (
+        db.session.query(
+            extract('month', Order.Order_Date).label('month'),  # Extract month from Order_Date
+            func.sum(OrderItem.Quantity * OrderItem.Price).label('revenue')  # Calculate total revenue
+        )
+        .join(OrderItem, Order.Order_ID == OrderItem.Order_ID)  # Join OrderItem with Order
+        .filter(OrderItem.Product_ID.in_(product_ids))  # Filter by Product_ID
+        .group_by(extract('month', Order.Order_Date))  # Group by the extracted month
+        .order_by(extract('month', Order.Order_Date))  # Sort by month for proper ordering
+        .all()
+    )
 
-        # Format the response
-        response = {
-            "labels": [month_labels[month - 1] for month in turnover_dict.keys()],  # Month names
-            "values": [turnover_dict[month] for month in turnover_dict.keys()]  # Monthly revenue values
-        }
+    print("Step 3: Calculated turnover data:", turnover_data)
 
-        return jsonify(response), 200
+    # Step 4: Prepare the response in the desired format
+    month_labels = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
+    turnover_dict = {month: 0 for month in range(1, 13)}  # Initialize all months with 0 revenue
 
-    except Exception as e:
-        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+    for row in turnover_data:
+        month = int(row.month)  # Extract the month (ensure it's an integer)
+        revenue = float(row.revenue)  # Extract the revenue for the month
+        turnover_dict[month] = revenue
+
+    print("Step 4: Prepared turnover dictionary:", turnover_dict)
+
+    # Format the response
+    response = {
+        "labels": [month_labels[month - 1] for month in turnover_dict.keys()],  # Month names
+        "values": [turnover_dict[month] for month in turnover_dict.keys()]  # Monthly revenue values
+    }
+
+    print("Step 4: Final response:", response)
+    return jsonify(response), 200
+
     
 # most popular products:
 def get_most_popular_products(warehouse_id):
