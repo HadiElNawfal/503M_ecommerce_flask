@@ -439,7 +439,7 @@ def get_data():
 @app.route('/api/dashboard', methods=['GET'])
 @role_required(['Admin'])  # Restrict access to Admin role
 def get_dashboard():
-    from app import db, Product, Order, User, Role
+    from app import db, Product, Order, Role
 
     try:
         # Query total products
@@ -450,8 +450,7 @@ def get_dashboard():
         orders_today = db.session.query(Order).filter(Order.Order_Date == today).count()
 
         # Query total customers, for now it will show 0
-        customer_role = db.session.query(Role).filter_by(Name='Customer').first()
-        total_customers = len(customer_role.users) if customer_role else 0
+        total_customers = 0
 
         # Query pending orders
         pending_orders = db.session.query(Order).filter_by(Status='Pending').count()
