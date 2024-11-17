@@ -73,26 +73,26 @@ def update_order_status(order_id):
 
 # view all orders:
 def view_all_orders():
-    from app import db, Order
+    from app import db, Order, OrderItem
     """
-    View all orders in the system.
+    View all orders in the system and recalculate totals if needed.
     """
     try:
         # Query all orders from the database
-        order_ids = [order_id[0] for order_id in db.session.query(Order.Order_ID).all()]
-        if not order_ids:
+        orders = Order.query.all()
+        if not orders:
             return jsonify({'message': 'No orders found'}), 200
-        # calculate and set its total (should be done before, but orders are input manually):
-        for order_id in order_ids:
-            order = Order.query.get(order_id)
+
+        # Recalculate totals for all orders
+        for order in orders:
             total_price = sum(item.Quantity * item.Price for item in order.order_items)
             total_amount = sum(item.Quantity for item in order.order_items)
+            order.Total_Price = total_price
+            order.Total_Amount = total_amount
+
+        # Commit updates to the database
         db.session.commit()
-        # Update the order
-        order.Total_Price = total_price
-        order.Total_Amount = total_amount
-        
-        orders = db.session.query(Order.Order_ID).all()
+
         # Serialize the orders
         order_list = [
             {
@@ -107,7 +107,9 @@ def view_all_orders():
 
         return jsonify(order_list), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
     
 #create order item:
 def create_order_item():
