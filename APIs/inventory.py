@@ -136,69 +136,54 @@ def initialize_inventory():
 
 # Assuming `warehouse_id` is passed to this function
 def get_monthly_inventory_turnover(warehouse_id):
-    print("here in get_monthly_inventory_turnover")
     from app import db, Inventory, Order, OrderItem
-    print("Step 1: Starting the process...")
 
-    # Step 2: Get all Product_IDs managed by this inventory manager
+    # Get all Product_IDs managed by this inventory manager
     inventory_items = Inventory.query.filter_by(Warehouse_ID=warehouse_id).all()
-    print("Step 2: Fetched inventory items:", inventory_items)
-
     product_ids = [item.Product_ID for item in inventory_items]
-    print("Step 2: Extracted Product IDs:", product_ids)
 
     if not product_ids:
         return jsonify({'error': 'No products found in the inventory for this manager'}), 404
 
-    # Step 3: Calculate revenue per month based on orders
-    # Join OrderItem and Order, and filter by Product_ID and Order_Date
-    turnover_data = (
+    # Calculate revenue per month based on orders
+    turnover_data_query = (
         db.session.query(
-            extract('month', Order.Order_Date).label('month'),  # Extract month from Order_Date
-            func.sum(OrderItem.Quantity * OrderItem.Price).label('revenue')  # Calculate total revenue
+            extract('month', Order.Order_Date).label('month'),
+            func.sum(OrderItem.Quantity * OrderItem.Price).label('revenue')
         )
-        .join(OrderItem, Order.Order_ID == OrderItem.Order_ID)  # Join OrderItem with Order
-        .filter(OrderItem.Product_ID.in_(product_ids))  # Filter by Product_ID
-        .group_by(extract('month', Order.Order_Date))  # Group by the extracted month
-        .order_by(extract('month', Order.Order_Date))  # Sort by month for proper ordering
+        .join(OrderItem, Order.Order_ID == OrderItem.Order_ID)
+        .filter(OrderItem.Product_ID.in_(product_ids))
+        .group_by(extract('month', Order.Order_Date))
+        .order_by(extract('month', Order.Order_Date))
         .all()
     )
 
-    print("Step 3: Calculated turnover data:", turnover_data)
-
-    # Step 4: Prepare the response in the desired format
+    # Prepare the response in the desired format
     month_labels = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ]
-    turnover_dict = {month: 0 for month in range(1, 13)}  # Initialize all months with 0 revenue
 
-    for row in turnover_data:
-        month = int(row.month)  # Extract the month (ensure it's an integer)
-        revenue = float(row.revenue)  # Extract the revenue for the month
-        turnover_dict[month] = revenue
+    labels = []
+    values = []
 
-    print("Step 4: Prepared turnover dictionary:", turnover_dict)
+    for row in turnover_data_query:
+        month = int(row.month)
+        labels.append(month_labels[month - 1])
+        values.append(float(row.revenue))
 
-    # Format the response
-    response = {
-        "labels": [month_labels[month - 1] for month in turnover_dict.keys()],  # Month names
-        "values": [turnover_dict[month] for month in turnover_dict.keys()]  # Monthly revenue values
+    turnover_data = {
+        "labels": labels,
+        "values": values
     }
-
-    print("Step 4: Final response:", response)
-    return jsonify(response), 200
+    return jsonify({
+        "turnoverData": turnover_data,
+    }), 200
 
     
 # most popular products:
 def get_most_popular_products(warehouse_id):
     from app import db, Product, Inventory, OrderItem
-    """
-    Get the most popular products for a given warehouse.
-    :param warehouse_id: The ID of the warehouse to calculate popularity for.
-    :return: Popular products in the format:
-             {"labels": ["Apple", "Banana", "Orange", ...], "values": [200, 150, 300, ...]}
-    """
     try:
         # Step 1: Get all Product_IDs managed by this warehouse
         inventory_items = Inventory.query.filter(Inventory.Warehouse_ID == warehouse_id).all()
@@ -222,14 +207,23 @@ def get_most_popular_products(warehouse_id):
 
         # Step 3: Prepare the response
         labels = [row.product_name for row in popular_data]
-        values = [row.total_quantity for row in popular_data]
+        values = [float(row.total_quantity) for row in popular_data]  #Convert Decimal to float
 
-        response = {
+        popular_products_data = {
             "labels": labels,
             "values": values
         }
-
-        return jsonify(response), 200
+        return jsonify({
+            "popularProductsData": popular_products_data,
+        }), 200
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+    
+
+def get_demands():
+     demand_prediction_data = {
+        "labels": ["Q1", "Q2", "Q3", "Q4"],
+        "values": [300, 400, 450, 500]
+    }
+     return jsonify({"demandPredictionData": demand_prediction_data}), 200

@@ -182,11 +182,17 @@ def create_sample_data():
     )
     order2 = Order(
         Total_Amount=299.99,
-        Order_Date=datetime(2024, 2, 28).date(),
+        Order_Date=datetime(2024, 7, 28).date(),
         Status='Shipped',
         Total_Price=299.99
     )
-    db.session.add_all([order1, order2])
+    order3 = Order(
+        Total_Amount=299.99,
+        Order_Date=datetime(2024, 5, 28).date(),
+        Status='Shipped',
+        Total_Price=299.99
+    )
+    db.session.add_all([order1, order2, order3])
     db.session.commit()
 
     # Create sample order items
@@ -199,16 +205,22 @@ def create_sample_data():
     order_item2 = OrderItem(
         Order_ID=order1.Order_ID,
         Product_ID=products[3].Product_ID,
-        Quantity=1,
+        Quantity=5,
         Price=59.99
     )
     order_item3 = OrderItem(
         Order_ID=order2.Order_ID,
         Product_ID=products[2].Product_ID,
-        Quantity=1,
+        Quantity=3,
         Price=299.99
     )
-    db.session.add_all([order_item1, order_item2, order_item3])
+    order_item4 = OrderItem(
+        Order_ID=order3.Order_ID,
+        Product_ID=products[6].Product_ID,
+        Quantity=7,
+        Price=39.99
+    )
+    db.session.add_all([order_item1, order_item2, order_item3, order_item4])
     db.session.commit()
 
     # Create sample returns
@@ -673,34 +685,22 @@ def view_inventory_by_id():
         warehouse_id = data['Warehouse_ID']
         return APIs.inventory.view_inventory(warehouse_id)
 
+
+
+
+
 # for the inventory reports:
-@app.route('/api/inventory/turnover', methods=['GET'])
+@app.route('/api/inventory-demands', methods=['GET'])
 @permission_required(['view_inventory'])
 @verify_csrf
-def monthly_inventory_report_by_id():
-    authenticated, user_data = is_authenticated()
-    if not authenticated:
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    user_id = user_data.get('user_id')
-    # Fetch warehouse data using the helper function
-    data, error = fetch_warehouse_by_user_id(user_id)
-    if error:
-        print("errorrr i am done here")
-        status_code = 404 if 'No warehouse found' in error else 500
-        return jsonify({'error': error}), status_code
-
-    warehouse_id = data['Warehouse_ID']
-    return APIs.inventory.get_monthly_inventory_turnover(warehouse_id) 
+def demands():
+    return APIs.inventory.get_demands() 
 
 # for the most popular products:
-@app.route('/api/inventory/popular-products', methods=['GET'])
+@app.route('/api/inventory-popular', methods=['GET'])
 @permission_required(['view_inventory'])
 @verify_csrf
 def most_popular_products_by_id():
-    """
-    Retrieve the most popular products for the inventory managed by the given user.
-    """
     authenticated, user_data = is_authenticated()
     if not authenticated:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -716,6 +716,30 @@ def most_popular_products_by_id():
 
     warehouse_id = data['Warehouse_ID']
     return APIs.inventory.get_most_popular_products(warehouse_id)
+
+@app.route('/api/inventory-turnover', methods=['GET'])
+@permission_required(['view_inventory'])
+@verify_csrf
+def monthly_turnover():
+    authenticated, user_data = is_authenticated()
+    if not authenticated:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    user_id = user_data.get('user_id')
+    # Fetch warehouse data using the helper function
+    data, error = fetch_warehouse_by_user_id(user_id)
+    if error:
+        status_code = 404 if 'No warehouse found' in error else 500
+        return jsonify({'error': error}), status_code
+
+    warehouse_id = data['Warehouse_ID']
+    return APIs.inventory.get_monthly_inventory_turnover(warehouse_id)
+
+    
+
+
+
+
 
 
 # Orders Management:
