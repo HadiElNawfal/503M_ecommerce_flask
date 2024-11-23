@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from sqlalchemy import or_
-from models import db, User, Role, Permission
+from models import db, User, Role, Permission, ActivityLog
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from itsdangerous import URLSafeTimedSerializer
 from flask_mail import Mail, Message
@@ -156,6 +156,7 @@ def create_users():
     create_user('customer', 'customer@example.com', 'Customer123!', roles['Customer'])
 # Initialize the database
 with app.app_context():
+    # db.drop_all() to reset the dB
     db.create_all()
     create_roles_and_permissions()  # Ensure roles and permissions are created
     create_users()   # Now create users for each role
@@ -390,6 +391,46 @@ def verify_token():
     except jwt.InvalidTokenError:
         print("Invalid token.")
         return jsonify({'error': 'Invalid token'}), 401
+
+@app.route('/api/log_activity', methods=['POST'])
+@csrf.exempt
+def log_activity():
+    try:
+        data = request.get_json()
+        if data is None:
+            app.logger.error("No JSON data received")
+            return jsonify({'error': 'No JSON data received'}), 400
+
+        user_id = data.get('user_id')
+        endpoint = data.get('endpoint')
+        method = data.get('method')
+        timestamp = data.get('timestamp')
+
+        if not endpoint or not method:
+            app.logger.error(f"Missing required fields in data: {data}")
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        if timestamp:
+            try:
+                timestamp = datetime.utcfromtimestamp(timestamp)
+            except (TypeError, ValueError) as e:
+                app.logger.error(f"Invalid timestamp value: {timestamp}")
+                timestamp = datetime.utcnow()
+        else:
+            timestamp = datetime.utcnow()
+
+        activity = ActivityLog(
+            user_id=user_id,
+            endpoint=endpoint,
+            method=method,
+            timestamp=timestamp
+        )
+        db.session.add(activity)
+        db.session.commit()
+        return jsonify({'message': 'Activity logged successfully'}), 200
+    except Exception as e:
+        app.logger.error(f"Error logging activity: {e}")
+        return jsonify({'error': 'Error logging activity'}), 500
     
 if __name__ == "__main__":
     app.run(ssl_context=(cert_path, key_path),host='0.0.0.0',port=5001, debug=True)

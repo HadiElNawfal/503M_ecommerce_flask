@@ -84,3 +84,13 @@ class Permission(db.Model):
     
     # Relationships
     roles = db.relationship('Role', secondary=role_permissions, back_populates='permissions')
+
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_log'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.User_ID'), nullable=True)
+    endpoint = db.Column(db.String(256))
+    method = db.Column(db.String(10))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User')

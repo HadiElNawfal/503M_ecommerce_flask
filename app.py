@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from flask_cors import CORS
 from models import db, Warehouse, Category, SubCategory, Product, Inventory, Order, OrderItem, Return
 import os
+import threading
 import random
 import secrets  
 import string
@@ -155,22 +156,7 @@ def create_sample_data():
         Warehouse_ID=warehouse1.Warehouse_ID,
         Stock_Level=50
     )
-    inventory2 = Inventory(
-        Product_ID=products[1].Product_ID,
-        Warehouse_ID=warehouse2.Warehouse_ID,
-        Stock_Level=30
-    )
-    inventory3 = Inventory(
-        Product_ID=products[2].Product_ID,
-        Warehouse_ID=warehouse1.Warehouse_ID,
-        Stock_Level=20
-    )
-    inventory4 = Inventory(
-        Product_ID=products[3].Product_ID,
-        Warehouse_ID=warehouse2.Warehouse_ID,
-        Stock_Level=100
-    )
-    db.session.add_all([inventory1, inventory2, inventory3, inventory4])
+    db.session.add_all([inventory1])
     db.session.commit()
 
     # Create sample orders
@@ -182,7 +168,7 @@ def create_sample_data():
     )
     order2 = Order(
         Total_Amount=299.99,
-        Order_Date=datetime(2024, 7, 28).date(),
+        Order_Date=datetime(2024, 2, 28).date(),
         Status='Shipped',
         Total_Price=299.99
     )
@@ -192,14 +178,14 @@ def create_sample_data():
         Status='Shipped',
         Total_Price=299.99
     )
-    db.session.add_all([order1, order2, order3])
+    db.session.add_all([order1, order2,order3])
     db.session.commit()
 
     # Create sample order items
     order_item1 = OrderItem(
         Order_ID=order1.Order_ID,
         Product_ID=products[0].Product_ID,
-        Quantity=1,
+        Quantity=3,
         Price=499.99
     )
     order_item2 = OrderItem(
@@ -211,7 +197,7 @@ def create_sample_data():
     order_item3 = OrderItem(
         Order_ID=order2.Order_ID,
         Product_ID=products[2].Product_ID,
-        Quantity=3,
+        Quantity=1,
         Price=299.99
     )
     order_item4 = OrderItem(
@@ -220,7 +206,7 @@ def create_sample_data():
         Quantity=7,
         Price=39.99
     )
-    db.session.add_all([order_item1, order_item2, order_item3, order_item4])
+    db.session.add_all([order_item1, order_item2, order_item3,order_item4])
     db.session.commit()
 
     # Create sample returns
@@ -239,7 +225,7 @@ def create_sample_data():
 
 # Initialize the database and create sample data
 with app.app_context():
-    db.drop_all()
+    # db.drop_all() to reset the dB
     db.create_all()
     create_sample_data()
     APIs.inventory.initialize_inventory()
@@ -291,6 +277,39 @@ def permission_required(required_permissions):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+def send_log_to_rbac(user_id, endpoint, method):
+    data = {
+        'user_id': user_id,
+        'endpoint': endpoint,
+        'method': method,
+        'timestamp': datetime.utcnow().timestamp(),
+    }
+
+    def log_request():
+        try:
+            response = requests.post(f'{RBAC_SERVICE_URL}/api/log_activity', json=data, verify=CA_CERT_PATH)
+            response.raise_for_status()
+        except requests.exceptions.RequestException:
+            pass
+
+    threading.Thread(target=log_request).start()
+
+@app.before_request
+def before_request():
+    if request.endpoint and not request.endpoint.startswith(('static', 'favicon')):
+        user_id = session.get('user_id')
+        if not user_id and 'Authorization' in request.headers:
+            auth_header = request.headers.get('Authorization')
+            token = auth_header.split()[1] if 'Bearer' in auth_header else auth_header
+            try:
+                decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=[JWT_ALGORITHM])
+                user_id = decoded.get('user_id')
+            except jwt.InvalidTokenError:
+                pass
+        endpoint = request.path
+        method = request.method
+        send_log_to_rbac(user_id, endpoint, method)
 
 # Set up the path to your certificates
 cert_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs", "flask.crt")
@@ -481,19 +500,7 @@ def get_dashboard():
         return jsonify(dashboard_data), 200
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-
     
-
-
-
-
-
-
-
-
-
-
-
 #API Calls:
 # import APIS:
 import APIs
@@ -595,25 +602,6 @@ def bulk_upload_products():
     return APIs.product.upload_products()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #inventory:
 @permission_required(['view_warehouse'])
 def fetch_warehouse_by_user_id(user_id):
@@ -684,10 +672,6 @@ def view_inventory_by_id():
         warehouse_id = data['Warehouse_ID']
         return APIs.inventory.view_inventory(warehouse_id)
 
-
-
-
-
 # for the inventory reports:
 @app.route('/api/inventory-demands', methods=['GET'])
 @permission_required(['view_inventory'])
@@ -733,13 +717,6 @@ def monthly_turnover():
 
     warehouse_id = data['Warehouse_ID']
     return APIs.inventory.get_monthly_inventory_turnover(warehouse_id)
-
-    
-
-
-
-
-
 
 # Orders Management:
 @app.route('/api/create_order', methods=['POST'])
