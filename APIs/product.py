@@ -216,214 +216,110 @@ def delete_product(product_id):
 
 
 # for CSV files/Bulk upload:
-def upload_products():
-    from app import Product, db, Category, SubCategory
-    """Upload a CSV file containing products and add them to the database."""
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part in the request'}), 400
-
-    file = request.files['file']
-
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-
-    if not file.filename.endswith('.csv'):
-        return jsonify({'error': 'Invalid file type. Only CSV files are allowed'}), 400
-
-    try:
-        # Decode and parse the CSV file
-        file_stream = file.stream.read().decode('utf-8')
-        csv_reader = csv.DictReader(file_stream.splitlines())
-
-        products_added = []
-        for row in csv_reader:
-            # Validate required fields
-            name = row.get('Name')
-            price = row.get('Price')
-            category_id = row.get('Category_ID')
-            subcategory_id = row.get('SubCategory_ID')
-
-            if not name or not price or not category_id or not subcategory_id:
-                return jsonify({
-                    'error': f'Missing required fields in row: {row}'
-                }), 400
-
-            # Convert price and IDs to appropriate types
-            try:
-                price = float(price)
-                category_id = int(category_id)
-                subcategory_id = int(subcategory_id)
-            except ValueError:
-                return jsonify({
-                    'error': f'Invalid data types in row: {row}'
-                }), 400
-
-            # Optional fields with defaults
-            description = row.get('Description', '')
-            image_url = row.get('ImageURL', '')
-            listed = row.get('Listed', 'true').lower() == 'true'
-            discount_percentage = int(row.get('Discount_Percentage', 0))
-
-            if discount_percentage < 0 or discount_percentage > 100:
-                return jsonify({
-                    'error': f'Invalid Discount_Percentage in row: {row}'
-                }), 400
-
-            # Check for existing category and subcategory
-            category = Category.query.get(category_id)
-            subcategory = SubCategory.query.get(subcategory_id)
-
-            if not category:
-                return jsonify({
-                    'error': f'Category_ID {category_id} not found in row: {row}'
-                }), 400
-
-            if not subcategory:
-                return jsonify({
-                    'error': f'SubCategory_ID {subcategory_id} not found in row: {row}'
-                }), 400
-
-            # Create a new product
-            product = Product(
-                Name=name,
-                Price=price,
-                Description=description,
-                ImageURL=image_url,
-                Listed=listed,
-                Discount_Percentage=discount_percentage,
-                Category_ID=category_id,
-                SubCategory_ID=subcategory_id
-            )
-            db.session.add(product)
-            products_added.append(product)
-
-        # Commit the changes
-        db.session.commit()
-        return jsonify({
-            'message': f'{len(products_added)} products added successfully'
-        }), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-
-# for csv files/Bulk update:
-# Constants
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_MIME_TYPES = ['text/csv', 'application/csv']
+ALLOWED_MIME_TYPES = ['text/csv', 'application/csv', 'text/plain']
 REQUIRED_HEADERS = ['Name', 'Price', 'Category_ID', 'SubCategory_ID']
-UPLOAD_RATE_LIMIT = 60  # seconds
 MAX_PRODUCTS_PER_UPLOAD = 1000
 
-# Rate limiting decorator
-def rate_limit(seconds):
-    last_upload = {}
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            now = time.time()
-            if 'last' in last_upload and now - last_upload['last'] < seconds:
-                return jsonify({'error': 'Rate limit exceeded. Please wait before uploading again.'}), 429
-            last_upload['last'] = now
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-
 def validate_csv_structure(headers):
-    """Validate CSV headers"""
     missing_headers = set(REQUIRED_HEADERS) - set(headers)
     if missing_headers:
-        raise ValueError(f"Missing required headers: {missing_headers}")
+        raise ValueError(f"Missing required headers: {', '.join(missing_headers)}")
 
 def sanitize_input(value):
-    """Basic input sanitization"""
     if isinstance(value, str):
         return value.strip()
     return value
 
-@rate_limit(UPLOAD_RATE_LIMIT)
 def upload_products():
-    from app import db, Product, Category, SubCategory
+    from app import Product, db, Category, SubCategory
 
     try:
-        # File validation
         if 'file' not in request.files:
             return jsonify({'error': 'No file part in the request'}), 400
 
         file = request.files['file']
+        print(file)
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Secure filename
         filename = secure_filename(file.filename)
+        print(filename)
         if not filename.endswith('.csv'):
             return jsonify({'error': 'Invalid file type. Only CSV files are allowed'}), 400
 
-        # Check file size
         file_content = file.read()
+        print(file_content)
         if len(file_content) > MAX_FILE_SIZE:
             return jsonify({'error': 'File size exceeds maximum limit'}), 400
 
-        # Verify MIME type
         mime_type = magic.from_buffer(file_content, mime=True)
         if mime_type not in ALLOWED_MIME_TYPES:
             return jsonify({'error': 'Invalid file type'}), 400
 
-        # Process CSV file
         stream = StringIO(file_content.decode('utf-8', errors='strict'))
         csv_reader = csv.DictReader(stream)
-        
-        # Validate CSV structure
         validate_csv_structure(csv_reader.fieldnames)
-        
+
         products_added = []
+        failed_rows = []
+
         for row_number, row in enumerate(csv_reader, 1):
             if row_number > MAX_PRODUCTS_PER_UPLOAD:
                 return jsonify({'error': 'Maximum number of products exceeded'}), 400
 
             try:
-                # Sanitize and validate required fields
                 name = sanitize_input(row.get('Name'))
                 price = sanitize_input(row.get('Price'))
                 category_id = sanitize_input(row.get('Category_ID'))
                 subcategory_id = sanitize_input(row.get('SubCategory_ID'))
 
                 if not all([name, price, category_id, subcategory_id]):
-                    logging.warning(f"Row {row_number}: Missing required fields")
+                    failed_rows.append({'row': row_number, 'reason': 'Missing required fields'})
                     continue
 
-                # Type conversion with validation
                 try:
                     price = float(price)
                     category_id = int(category_id)
                     subcategory_id = int(subcategory_id)
                 except ValueError as e:
-                    logging.warning(f"Row {row_number}: Invalid data types - {str(e)}")
+                    failed_rows.append({'row': row_number, 'reason': 'Invalid data types'})
                     continue
 
                 if price <= 0:
-                    logging.warning(f"Row {row_number}: Invalid price value")
+                    failed_rows.append({'row': row_number, 'reason': 'Invalid price value'})
                     continue
 
-                # Optional fields with sanitization
                 description = sanitize_input(row.get('Description', ''))
                 image_url = sanitize_input(row.get('ImageURL', ''))
                 listed = str(sanitize_input(row.get('Listed', 'True'))).lower() == 'true'
-                discount_percentage = int(sanitize_input(row.get('Discount_Percentage', '0')))
+                discount_percentage = sanitize_input(row.get('Discount_Percentage', '0'))
+
+                try:
+                    discount_percentage = int(discount_percentage)
+                except ValueError:
+                    failed_rows.append({'row': row_number, 'reason': 'Invalid discount percentage'})
+                    continue
 
                 if not (0 <= discount_percentage <= 100):
-                    logging.warning(f"Row {row_number}: Invalid discount percentage")
+                    failed_rows.append({'row': row_number, 'reason': 'Discount percentage out of range'})
                     continue
 
-                # Verify foreign key constraints
-                category = db.session.query(Category).get(category_id)
-                subcategory = db.session.query(SubCategory).get(subcategory_id)
+                category = Category.query.get(category_id)
+                subcategory = SubCategory.query.get(subcategory_id)
 
-                if not category or not subcategory:
-                    logging.warning(f"Row {row_number}: Invalid category or subcategory ID")
+                if not category:
+                    failed_rows.append({'row': row_number, 'reason': f'Category_ID {category_id} not found'})
+                    continue
+                if not subcategory:
+                    failed_rows.append({'row': row_number, 'reason': f'SubCategory_ID {subcategory_id} not found'})
                     continue
 
-                # Create product with sanitized data
+                existing_product = Product.query.filter_by(Name=name).first()
+                if existing_product:
+                    failed_rows.append({'row': row_number, 'reason': f'Product "{name}" already exists'})
+                    continue
+
                 product = Product(
                     Name=name,
                     Price=price,
@@ -438,20 +334,20 @@ def upload_products():
                 products_added.append(product)
 
             except Exception as row_error:
-                logging.error(f"Error processing row {row_number}: {str(row_error)}")
+                failed_rows.append({'row': row_number, 'reason': str(row_error)})
                 continue
 
-        # Commit transaction if products were added
         if products_added:
             db.session.commit()
-            logging.info(f"Successfully added {len(products_added)} products")
-            return jsonify({'message': f'{len(products_added)} products added successfully'}), 201
+            return jsonify({
+                'message': f'{len(products_added)} products added successfully',
+                'failed_rows': failed_rows
+            }), 201
         else:
-            return jsonify({'error': 'No valid products found in the CSV file'}), 400
+            return jsonify({'error': 'No valid products found in the CSV file', 'failed_rows': failed_rows}), 400
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Upload failed: {str(e)}")
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
     finally:

@@ -588,11 +588,10 @@ def delete_product(product_id):
     return APIs.product.delete_product(product_id)
 
 #Bulk upload / CSV File:
-# should FIXXXXXXX
 @app.route('/api/upload_products', methods=['POST'])
 @role_required(['Product Manager', 'Admin'])
 @verify_csrf
-def upload_products():
+def bulk_upload_products():
     return APIs.product.upload_products()
 
 
